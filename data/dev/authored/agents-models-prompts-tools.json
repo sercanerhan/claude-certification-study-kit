@@ -1,0 +1,1189 @@
+[
+  {
+    "id": "DV-1.1-01",
+    "exam": "CCDV-F",
+    "domain": 1,
+    "skill": "1.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your team processes supplier invoices. Every invoice goes through the same three steps: extract the header and line items, check the totals against the matching purchase order from the ERP API, and emit a JSON record for the accounting system. A teammate proposes an autonomous agent that gets all three capabilities as tools and decides for itself what to do next. Which design best fits this task?",
+    "options": [
+      {
+        "key": "A",
+        "text": "An autonomous agent loop with the extraction, ERP lookup and JSON export tools, so Claude can decide the order of the steps for each invoice."
+      },
+      {
+        "key": "B",
+        "text": "An orchestrator-workers setup in which a lead agent plans each invoice at runtime and then delegates the steps to specialised worker agents."
+      },
+      {
+        "key": "C",
+        "text": "A prompt-chaining workflow in code: one call per fixed step, with a programmatic totals check against the purchase order between steps."
+      },
+      {
+        "key": "D",
+        "text": "One large prompt holding the invoice, the full purchase-order table and the output schema, asking Claude to do all three steps in a single reply."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "The steps are known in advance and identical for every invoice, which is what workflows are for: LLM calls orchestrated through predefined code paths. Prompt chaining splits the job into fixed steps and lets you put a programmatic gate (the totals check) between them, trading a little latency for accuracy. An agent buys flexibility this task doesn't need, at the cost of more latency, more tokens and less predictable behaviour.",
+    "why": {
+      "A": "Agents suit open-ended problems where the steps can't be predicted. Here the order never changes, so letting the model choose it only adds cost and new ways to fail.",
+      "B": "Orchestrator-workers fits tasks whose subtasks are decided at runtime, such as multi-file code changes. These subtasks are fixed.",
+      "D": "A single call leaves no checkpoint where code can validate the totals, and it loads the whole PO table into every request instead of fetching only the matching PO."
+    },
+    "whenRight": "A would become right if invoices needed open-ended investigation, such as chasing missing POs, emailing suppliers or reconciling partial deliveries, where each next step depends on what the last one found.",
+    "trap": "\"Every invoice goes through the same three steps\": fixed, predictable steps point to a workflow, not an agent.",
+    "verified": [
+      "https://www.anthropic.com/engineering/building-effective-agents"
+    ]
+  },
+  {
+    "id": "DV-1.1-02",
+    "exam": "CCDV-F",
+    "domain": 1,
+    "skill": "1.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A research agent built on the Claude Agent SDK must compare 40 annual reports and produce a short comparison table. In the current design the main agent reads every report itself. By report 25 its context is full of raw filing text, and answer quality drops noticeably. What change best addresses the problem?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Define a subagent that analyses one report and returns a short structured summary, and have the main agent delegate each report to it."
+      },
+      {
+        "key": "B",
+        "text": "Have each subagent return the full text of its report to the main agent, so that no detail is lost before the comparison table is written."
+      },
+      {
+        "key": "C",
+        "text": "Start each subagent as a fork of the main conversation, so that every subagent can see all of the reports the main agent has already read."
+      },
+      {
+        "key": "D",
+        "text": "Keep the single agent, but tell it in the system prompt to ignore report text it has already processed when it writes the comparison table."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "Each subagent runs in its own context window, and only its final message returns to the parent. Delegating one report per subagent means the main agent's context grows by 40 short summaries instead of 40 filings: the context-isolation benefit the SDK docs describe. Because the reports are independent, the subagents can also run in parallel.",
+    "why": {
+      "B": "Returning full text re-imports exactly the bloat you are trying to remove. Isolation only pays off if the parent receives a concise result.",
+      "C": "A fork copies the parent conversation, so each subagent would start with the same overloaded context. Fresh subagents are the right choice here.",
+      "D": "An instruction cannot remove tokens from the context window. The raw text is still there, still costs tokens and still dilutes attention."
+    },
+    "whenRight": "C would be right if each subagent genuinely needed the parent's earlier reasoning and decisions to do its job, and the parent's context was still small.",
+    "trap": "\"its context is full of raw filing text\": the fix is context isolation, so only summaries should cross the subagent boundary.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/subagents",
+      "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+    ]
+  },
+  {
+    "id": "DV-1.1-03",
+    "exam": "CCDV-F",
+    "domain": 1,
+    "skill": "1.1",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 2,
+    "stem": "You are designing a supervisor agent with Agent SDK subagents for a code-review product. A colleague has written down several beliefs about how subagents behave. Which TWO statements are accurate? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "A subagent automatically receives the parent's conversation history, so the delegation prompt can be short and can leave out file paths."
+      },
+      {
+        "key": "B",
+        "text": "Only the subagent's final message returns to the parent; its intermediate tool calls and results stay inside its own context."
+      },
+      {
+        "key": "C",
+        "text": "Splitting work across subagents always lowers a run's total token spend, because each subagent's context is smaller than the parent's."
+      },
+      {
+        "key": "D",
+        "text": "Subagents can't have a narrower tool set than the parent, so a read-only reviewer needs its own separate deployment with fewer tools."
+      },
+      {
+        "key": "E",
+        "text": "A subagent's tools can be limited in its AgentDefinition, for example to Read, Grep and Glob for a reviewer that must never edit files."
+      }
+    ],
+    "answer": [
+      "B",
+      "E"
+    ],
+    "explanation": "A non-fork subagent starts with a fresh context. The only thing the parent passes in is the Agent tool's prompt string, and only the subagent's final message comes back. The tools field of AgentDefinition restricts what each subagent may use, which is how you build a read-only reviewer inside the same agent.",
+    "why": {
+      "A": "Non-fork subagents don't see the parent's history or tool results. Anything they need, such as file paths and error messages, must be in the delegation prompt.",
+      "C": "Isolation keeps the parent's context small, but every subagent makes its own API calls, so total tokens across the tree often go up. That is why the SDK offers depth, concurrency and budget caps.",
+      "D": "Tool restriction is one of the documented benefits of subagents: the tools field in AgentDefinition limits that subagent only."
+    },
+    "whenRight": "A becomes true for a fork, which copies the conversation so far instead of starting fresh.",
+    "trap": "\"automatically receives\": subagents are isolated by design. Isolation is both the benefit and the reason you must write a complete delegation prompt.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/subagents"
+    ]
+  },
+  {
+    "id": "DV-1.2-01",
+    "exam": "CCDV-F",
+    "domain": 1,
+    "skill": "1.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your team is adding an autonomous code-maintenance agent to an existing Python service. It must read, edit and search files, run shell commands, keep sessions it can resume, and call a few in-process Python functions. Security wants every shell command checked by a Python callback before it runs. You want to write as little orchestration code as possible. Which approach fits best?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Call the Messages API through the Python client SDK, write the tool-use loop yourself, and build the file, search and shell tools from scratch."
+      },
+      {
+        "key": "B",
+        "text": "Use the Claude Agent SDK inside the service, with its built-in tools and sessions and a PreToolUse hook callback registered in the options."
+      },
+      {
+        "key": "C",
+        "text": "Run the Claude Code CLI interactively on a developer laptop and have an engineer paste its suggested changes into the service repository."
+      },
+      {
+        "key": "D",
+        "text": "Send the whole repository in one Message Batches request every night and apply whatever diffs come back in the batch results file."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "The Agent SDK embeds Claude Code's agent loop, built-in tools (Read, Edit, Bash, Glob, Grep), permissions, sessions and hooks as a library in a process you operate. Hooks are callbacks passed in options.hooks, so a PreToolUse callback can inspect each Bash command and allow or deny it before it runs. Custom in-process tools plug into the same loop.",
+    "why": {
+      "A": "This works, but you would rebuild the loop, the file and shell tools, session persistence and the approval layer yourself: the opposite of writing as little orchestration code as possible.",
+      "C": "The CLI is built for interactive development and one-off tasks. It doesn't embed in your service or automate anything.",
+      "D": "Batch requests are asynchronous single requests. There is no tool loop, so the model can't run commands, read the results and iterate."
+    },
+    "whenRight": "Claude Managed Agents would fit if you wanted Anthropic to host the harness and sandbox and you drove sessions over the API, rather than running the agent inside your own process.",
+    "trap": "\"call in-process Python functions\" and \"checked by a Python callback\": the agent must live in your process with Claude Code's tools, which is what the Agent SDK provides.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/overview",
+      "https://code.claude.com/docs/en/agent-sdk/hooks",
+      "https://code.claude.com/docs/en/agent-sdk/agent-loop"
+    ]
+  },
+  {
+    "id": "DV-1.2-02",
+    "exam": "CCDV-F",
+    "domain": 1,
+    "skill": "1.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A product team wants an agent that runs multi-hour research tasks on demand, keeps a persistent filesystem between a user's interactions, and lets the user steer it while it runs. The team does not want to build or operate an agent loop, a sandbox, or storage for conversation history. Which option fits best?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Run the Agent SDK in a long-lived container the team operates, and add its own session store and sandbox hardening around it."
+      },
+      {
+        "key": "B",
+        "text": "Make one Messages API call with the largest allowed max_tokens and stream the response back to the user until it is finished."
+      },
+      {
+        "key": "C",
+        "text": "Submit each research task to the Message Batches API and poll for the result, since a batch can take up to a day to complete."
+      },
+      {
+        "key": "D",
+        "text": "Use Claude Managed Agents: define the agent once, create an environment, and start a session per task, streaming its events."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "Managed Agents is a pre-built, configurable agent harness that runs in managed infrastructure. You define an agent (model, system prompt, tools, MCP servers, skills), an environment and sessions. Claude runs tools autonomously and streams events over SSE, event history persists server-side, and you can send more user events to steer or interrupt a running session.",
+    "why": {
+      "A": "This can work, but it means operating the container, the sandbox and the session storage, which the team explicitly doesn't want.",
+      "B": "One request is one model turn. There is no tool loop across hours, no persistent filesystem and no way to steer mid-task.",
+      "C": "Batch requests are independent and asynchronous. They give the model no tool loop and the user no way to steer."
+    },
+    "whenRight": "A would be right if the workload required Zero Data Retention or HIPAA coverage. Managed Agents stores sessions server-side and is not currently eligible for either, so a self-operated deployment on the Messages API, such as the Agent SDK, would be the alternative.",
+    "trap": "\"does not want to build or operate\" a loop, sandbox or history storage: that is exactly what Managed Agents hosts for you.",
+    "verified": [
+      "https://platform.claude.com/docs/en/managed-agents/overview",
+      "https://code.claude.com/docs/en/agent-sdk/overview"
+    ]
+  },
+  {
+    "id": "DV-1.2-03",
+    "exam": "CCDV-F",
+    "domain": 1,
+    "skill": "1.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "An Agent SDK agent must never run `git push --force`. A developer registered this hook: `\"PreToolUse\": [HookMatcher(matcher=\"git push --force\", hooks=[deny_push])]`. In testing, the agent still force-pushes, and `deny_push` is never called. What is the correct fix?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Change the event to PostToolUse, so that the callback runs after the command finishes and can reverse any force-push the agent made."
+      },
+      {
+        "key": "B",
+        "text": "Keep the matcher, and also add 'NEVER force-push' in capital letters to the system prompt as a second layer of protection."
+      },
+      {
+        "key": "C",
+        "text": "Set the matcher to \"Bash\" and, in the callback, inspect tool_input.command and return permissionDecision \"deny\" with a reason."
+      },
+      {
+        "key": "D",
+        "text": "Register deny_push under the Stop event, so it checks the session's commands once the agent finishes and fails the run if needed."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "For tool hooks, the matcher is tested against the tool name (Bash, Write, mcp__server__tool), not against the tool's arguments. A matcher of \"git push --force\" never matches any tool, so the hook never runs. Match the Bash tool and check the command string in code: returning permissionDecision \"deny\" with a permissionDecisionReason blocks the call before it executes and tells Claude why.",
+    "why": {
+      "A": "PostToolUse runs after the tool has executed, when the remote history is already rewritten. Reversing it is damage control, not prevention.",
+      "B": "A prompt line is probabilistic, and the hook would still never fire because the matcher is wrong.",
+      "D": "Stop fires when the agent finishes, long after the command ran."
+    },
+    "whenRight": "B's prompt line is a reasonable extra soft layer, but only alongside a correctly matched PreToolUse hook. For commands Claude could run another way, sandbox or permission rules add a further layer.",
+    "trap": "\"deny_push is never called\": matchers match tool names, not command text, so filter arguments inside the callback.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/hooks"
+    ]
+  },
+  {
+    "id": "DV-1.3-01",
+    "exam": "CCDV-F",
+    "domain": 1,
+    "skill": "1.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your prototype agent is a single tool-use loop of about 60 lines on the Claude client SDK, with four tools. It works, but a teammate wants to rewrite it in an agent framework such as LangGraph, Strands or PydanticAI, \"because production agents need a framework\". Debugging prompt issues is already the team's biggest time sink. What should you recommend?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Keep the plain loop for now, and adopt a framework only when you need something it provides, such as durable graph state."
+      },
+      {
+        "key": "B",
+        "text": "Adopt the framework now, because its abstractions improve Claude's tool-selection accuracy compared with calling the Messages API directly."
+      },
+      {
+        "key": "C",
+        "text": "Adopt the framework now, because Claude only supports multi-step tool use when it is called through an orchestration framework of this kind."
+      },
+      {
+        "key": "D",
+        "text": "Rewrite the loop as several cooperating agents in the framework, so that each of the four tools gets its own agent and its own system prompt."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "Anthropic's guidance is to start with the LLM APIs directly, since many patterns take only a few lines of code, and to add complexity only when it demonstrably helps. Frameworks can speed up some work, but their abstraction layers can hide the underlying prompts and responses, which makes debugging harder. If you do adopt one, make sure you understand the code underneath.",
+    "why": {
+      "B": "A framework doesn't change the model. Tool selection depends on tool descriptions and prompts, which a framework can make harder to see.",
+      "C": "Tool use is a native Messages API feature: the model returns tool_use blocks and your loop sends back tool_result blocks.",
+      "D": "Turning four tools into four agents adds coordination cost and failure modes without solving any stated problem."
+    },
+    "whenRight": "Adopting a framework becomes the better call when the app needs features you would otherwise rebuild, such as checkpointed multi-branch state, human-in-the-loop resume or many coordinated agents, and the team is ready to own the abstraction.",
+    "trap": "\"Debugging prompt issues is already the team's biggest time sink\": extra abstraction that hides the prompts makes the stated problem worse.",
+    "verified": [
+      "https://www.anthropic.com/engineering/building-effective-agents"
+    ]
+  },
+  {
+    "id": "DV-1.3-02",
+    "exam": "CCDV-F",
+    "domain": 1,
+    "skill": "1.3",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 3,
+    "stem": "An Agent SDK agent is migrating a large codebase over several hours. After the SDK compacts the conversation automatically, the agent sometimes forgets a rule from its first prompt (never edit files under /generated) and loses track of which modules it has already migrated. Which TWO changes address this? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Move the standing rule into CLAUDE.md, loaded through settingSources, which is re-injected on every request instead of being summarised."
+      },
+      {
+        "key": "B",
+        "text": "Raise max_tokens on each request, so that the conversation never grows large enough to trigger automatic compaction in the first place."
+      },
+      {
+        "key": "C",
+        "text": "Turn compaction off and switch to a model with a larger context window, keeping the full transcript of the migration in context from start to end."
+      },
+      {
+        "key": "D",
+        "text": "Have the agent keep a progress file of finished modules and next steps, update it after each module, and re-read it when it resumes work."
+      },
+      {
+        "key": "E",
+        "text": "Restate every original instruction inside each tool result the agent receives, so that the rules always sit near the end of the context."
+      }
+    ],
+    "answer": [
+      "A",
+      "D"
+    ],
+    "explanation": "Compaction replaces older messages with a summary, so instructions that appear only early in the conversation may not survive. The SDK docs recommend putting persistent rules in CLAUDE.md, which is re-injected on every request. For progress, structured note-taking (an agentic memory pattern) keeps state outside the context window, so the agent can reload exactly what it has finished after any compaction.",
+    "why": {
+      "B": "max_tokens caps the output of each request. It has no effect on how large the accumulated input context grows.",
+      "C": "A bigger window only delays the problem and costs more on every turn, and recall degrades as the context fills (context rot).",
+      "E": "Injecting the rules into every tool result bloats the context with duplicates and mixes trusted instructions into tool output."
+    },
+    "whenRight": "C could be reasonable for a task short enough to fit comfortably in the window, where compaction never triggers at all.",
+    "trap": "\"After the SDK compacts the conversation\": anything that must persist belongs outside the summarised history, in CLAUDE.md or a notes file.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/agent-loop",
+      "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+    ]
+  },
+  {
+    "id": "DV-5.1-01",
+    "exam": "CCDV-F",
+    "domain": 5,
+    "skill": "5.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "You move a document-analysis endpoint to a model that uses adaptive thinking at high effort. The request still sets max_tokens: 1024, carried over from the old configuration. Now some responses end with stop_reason \"max_tokens\" and a cut-off or missing answer. What is the best fix?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Add thinking: {type: \"enabled\", budget_tokens: 512} so that thinking is capped well below max_tokens and the answer always fits."
+      },
+      {
+        "key": "B",
+        "text": "Set the thinking display to \"omitted\", so that thinking tokens stop counting against max_tokens and are no longer billed as output."
+      },
+      {
+        "key": "C",
+        "text": "Retry the same request until one run finishes, because a max_tokens stop is a transient capacity error on the server side."
+      },
+      {
+        "key": "D",
+        "text": "Raise max_tokens to leave room for thinking plus the answer, or lower effort if those requests didn't need the reasoning."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "max_tokens is a hard cap on total output: thinking and response text combined. A limit sized for a response without thinking is often too small once Claude starts thinking on hard requests. The docs give two remedies: raise max_tokens if quality on those requests matters, or lower effort so Claude thinks less and leaves more of the budget for the answer.",
+    "why": {
+      "A": "Manual budget_tokens is a deprecated mode with a 1,024-token minimum, and models from Claude 4.7 onward reject thinking type \"enabled\" with a 400 error.",
+      "B": "display changes only what you see. You are billed for the full thinking either way, and it still counts toward max_tokens.",
+      "C": "max_tokens is a normal stop reason meaning the output limit was reached. The same request will hit it again."
+    },
+    "whenRight": "A would apply on an older model that supports only manual extended thinking, provided the budget is at least 1,024 tokens and below max_tokens.",
+    "trap": "\"max_tokens: 1024, carried over\": thinking counts toward max_tokens, so a cap sized for non-thinking output truncates answers.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking",
+      "https://platform.claude.com/docs/en/build-with-claude/extended-thinking"
+    ]
+  },
+  {
+    "id": "DV-5.1-02",
+    "exam": "CCDV-F",
+    "domain": 5,
+    "skill": "5.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A high-volume intent classifier runs on a model with adaptive thinking. Accuracy is fine, but latency and cost are over budget because Claude often thinks before answering even simple messages. A teammate suggests adding 'Do not think, answer immediately' to the system prompt. What should you try first?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Add the teammate's instruction to the system prompt and repeat it at the end of every user message to make it stronger."
+      },
+      {
+        "key": "B",
+        "text": "Lower output_config.effort, for example to low, and then re-run your evals to confirm that accuracy holds at the new level."
+      },
+      {
+        "key": "C",
+        "text": "Turn on fast mode with speed: \"fast\", because it runs a smaller variant of the model that thinks less on each request."
+      },
+      {
+        "key": "D",
+        "text": "Add a manual thinking budget of 1,024 tokens, the smallest allowed, so that the model's thinking is capped on every request."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "Effort is the primary, calibrated control over how often and how deeply Claude thinks, and it affects every output token, including text and tool calls. The docs advise lowering effort before reaching for prompt-based steering, which is sensitive to wording and, on some models, doesn't reliably reduce thinking. Measure quality after the change.",
+    "why": {
+      "A": "Prompt steering can work but is wording-sensitive. The docs recommend effort as the first lever and note that some models don't reliably think less when told to.",
+      "C": "Fast mode runs the same model with faster inference at premium pricing. It raises output speed without reducing thinking, and it increases cost.",
+      "D": "Manual budgets are deprecated and rejected by Claude 4.7 and later models. With a fixed budget Claude also thinks on every request, the opposite of what you want."
+    },
+    "whenRight": "A, as a light per-message nudge, becomes useful after effort is set, when only some turns need less thinking and the model responds reliably to that wording.",
+    "trap": "\"What should you try first?\": effort is the calibrated first lever, and prompt wording is the second.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking",
+      "https://platform.claude.com/docs/en/build-with-claude/effort",
+      "https://platform.claude.com/docs/en/build-with-claude/fast-mode"
+    ]
+  },
+  {
+    "id": "DV-5.1-03",
+    "exam": "CCDV-F",
+    "domain": 5,
+    "skill": "5.1",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 2,
+    "stem": "A zero-shot prompt extracts shipment data from carrier emails. The output drifts: dates appear in several formats, and multi-leg shipments are often merged into one record. You want to fix this through prompting. Which TWO changes follow Anthropic's guidance? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Add one example email with its expected output, and tell Claude to copy that example's structure exactly for every email it processes."
+      },
+      {
+        "key": "B",
+        "text": "Add five examples that are nearly identical to each other, so that the pattern Claude should follow is completely unambiguous."
+      },
+      {
+        "key": "C",
+        "text": "Add three to five varied examples, including a multi-leg shipment, each in <example> tags inside an <examples> block."
+      },
+      {
+        "key": "D",
+        "text": "State the required date format and explain why it matters, for example that the downstream parser accepts only ISO 8601 dates."
+      },
+      {
+        "key": "E",
+        "text": "Replace the examples with a long list of rules covering every edge case you have seen, since rules cost fewer tokens than examples."
+      }
+    ],
+    "answer": [
+      "C",
+      "D"
+    ],
+    "explanation": "Few-shot (multishot) examples are one of the most reliable ways to steer format. Make them relevant, diverse enough to cover edge cases such as multi-leg shipments, and wrapped in example tags so Claude can tell them apart from instructions; 3 to 5 is the recommended range. Being explicit about the required format, and giving the reason behind it, helps Claude apply the rule correctly.",
+    "why": {
+      "A": "A single example invites Claude to copy its incidental details, and one example can't show both the single-leg and the multi-leg case.",
+      "B": "Near-identical examples teach unintended patterns. The guidance is to vary examples so Claude doesn't overfit to one shape.",
+      "E": "Anthropic's context-engineering guidance prefers a few diverse, canonical examples over a laundry list of edge-case rules, which tends to be brittle."
+    },
+    "whenRight": "A one-shot example (A without 'copy exactly') can be enough for a simple, uniform format when the token budget is tight.",
+    "trap": "\"dates appear in several formats\" and \"multi-leg shipments\": you need diverse examples that include the edge case, plus an explicit format rule.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices",
+      "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+    ]
+  },
+  {
+    "id": "DV-5.2-01",
+    "exam": "CCDV-F",
+    "domain": 5,
+    "skill": "5.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A nightly job calls the Messages API through a hand-written HTTP client. It crashes on occasional 429 and 529 responses, and requests with max_tokens set to 64,000 sometimes hang until the connection drops. You are free to change the client code. What is the best change?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Retry every non-200 response, including 400 errors, immediately in a tight loop until the call succeeds or the job's window closes."
+      },
+      {
+        "key": "B",
+        "text": "Raise the HTTP client timeout to 60 minutes and keep the large requests non-streaming, so that slow responses have time to finish."
+      },
+      {
+        "key": "C",
+        "text": "Use the official SDK, which retries 429 and 5xx errors with backoff and honours retry-after, and stream the large requests."
+      },
+      {
+        "key": "D",
+        "text": "Open a WebSocket connection to the Messages API instead of HTTP, so that long responses arrive over a connection that stays open."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "The official SDKs wrap the REST API with typed errors and automatic retries: transient failures such as connection errors, 429s and 5xx errors are retried with exponential backoff, twice by default (configurable with max_retries), honouring the retry-after header. For large max_tokens values the docs recommend streaming, because networks can drop idle connections; the SDK's stream helper can still hand you the complete Message.",
+    "why": {
+      "A": "A 400 means the request itself is invalid and will fail again, and retrying 429s and 529s without backoff adds load to an already overloaded service.",
+      "B": "Long, idle non-streaming connections are exactly what networks drop. The docs recommend streaming or batches for long requests, especially those over 10 minutes.",
+      "D": "The Messages API streams over server-sent events on ordinary HTTP (stream: true); the documented interface is not a WebSocket."
+    },
+    "whenRight": "Because the job runs nightly and isn't latency-sensitive, the Message Batches API is also a strong option: you poll for results instead of holding a connection open.",
+    "trap": "\"429 and 529\" plus \"max_tokens set to 64,000\": transient errors need retries with backoff, and long generations need streaming.",
+    "verified": [
+      "https://platform.claude.com/docs/en/api/errors",
+      "https://platform.claude.com/docs/en/api/client-sdks",
+      "https://platform.claude.com/docs/en/build-with-claude/streaming"
+    ]
+  },
+  {
+    "id": "DV-5.2-02",
+    "exam": "CCDV-F",
+    "domain": 5,
+    "skill": "5.2",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 3,
+    "stem": "You are writing your own client, without an SDK, for streaming Messages API responses (stream: true) in a chat UI that also renders tool calls. Which TWO behaviours must your stream parser handle correctly? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Accumulate the partial_json strings of a tool_use block's input_json_delta events and parse the JSON after its content_block_stop."
+      },
+      {
+        "key": "B",
+        "text": "Parse each input_json_delta chunk as a complete JSON object as soon as it arrives, so that tool arguments can be shown immediately."
+      },
+      {
+        "key": "C",
+        "text": "Handle an error event, such as overloaded_error, that arrives in the stream even though the HTTP response already returned 200."
+      },
+      {
+        "key": "D",
+        "text": "Add up the usage values from every message_delta event to get the final output token count for the response as a whole."
+      },
+      {
+        "key": "E",
+        "text": "Reject the whole stream as corrupted when an unknown event type appears, because the set of streaming event types is fixed."
+      }
+    ],
+    "answer": [
+      "A",
+      "C"
+    ],
+    "explanation": "Tool input arrives as partial JSON strings, while the final tool_use.input is an object, so accumulate the deltas and parse once the block stops (or use a partial-JSON parser). Errors can also arrive mid-stream as error events after a 200 response, so they don't go through your normal HTTP error handling.",
+    "why": {
+      "B": "Individual partial_json chunks are fragments such as {\"location\": \"San Fra and are not valid JSON on their own.",
+      "D": "The usage counts in message_delta are cumulative, so summing the events double-counts tokens.",
+      "E": "The versioning policy allows new event types to be added, so clients should handle unknown types gracefully; ping events can also appear at any point."
+    },
+    "whenRight": "B becomes workable only with a partial-JSON parser that tolerates incomplete input, or with the Python or TypeScript SDK helpers that expose the parsed input incrementally.",
+    "trap": "\"without an SDK\": you own the event semantics, including partial JSON, cumulative usage and mid-stream errors.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/streaming",
+      "https://platform.claude.com/docs/en/api/errors"
+    ]
+  },
+  {
+    "id": "DV-5.3-01",
+    "exam": "CCDV-F",
+    "domain": 5,
+    "skill": "5.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A support platform classifies about 2 million incoming tickets a day into 12 queues, with a strict latency target. About 1% of tickets are escalations that need careful analysis across the customer's contract, past tickets and logs. You need one design that covers both. Which model strategy fits best?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Run everything on the most capable Opus-class model at max effort, so that the rare escalations get the same quality as routing."
+      },
+      {
+        "key": "B",
+        "text": "Route all tickets with a Haiku-class model and send only the escalations to an Opus-class model for the deeper analysis."
+      },
+      {
+        "key": "C",
+        "text": "Run everything on a Haiku-class model, adding more few-shot examples until the escalation analyses are good enough."
+      },
+      {
+        "key": "D",
+        "text": "Run everything on an Opus-class model in fast mode, since fast mode is the cheapest way to meet a strict latency target."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "Model choice is a quality, latency and cost trade-off made per task. Anthropic positions Haiku for high-volume, latency-sensitive work such as classification and routing, and describes multi-model strategies that bill most tokens at the lower-cost model and reserve the frontier model for the hard part. Routing is the workflow pattern that sends each input to the handler suited to it.",
+    "why": {
+      "A": "Paying top-tier price and latency on 2 million simple classifications a day, to serve the 1% of hard cases, is the wrong trade.",
+      "C": "Examples improve format and consistency, but they don't make the fastest model the best choice for deep multi-document reasoning.",
+      "D": "Fast mode raises output speed on supported Opus models at premium pricing. It is the opposite of cheap, and Haiku is already faster for routing."
+    },
+    "whenRight": "C could be right if evals showed the smaller model's escalation analyses met the quality bar, which is exactly what the efficiency-first approach tests.",
+    "trap": "\"2 million a day\" with a \"strict latency target\", versus \"about 1%\" needing depth: split the workload by difficulty.",
+    "verified": [
+      "https://platform.claude.com/docs/en/about-claude/models/overview",
+      "https://platform.claude.com/docs/en/about-claude/models/choosing-a-model",
+      "https://platform.claude.com/docs/en/build-with-claude/fast-mode"
+    ]
+  },
+  {
+    "id": "DV-5.3-02",
+    "exam": "CCDV-F",
+    "domain": 5,
+    "skill": "5.3",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 3,
+    "stem": "You plan to move a production agent from Claude Opus 5 to Claude Opus 5.5 by changing only the model ID. The release notes list three changes: forced tool use (tool_choice of type \"any\" or \"tool\") now returns a 400 error; the default effort dropped from high to medium; and the model tends to think more per turn at a given effort. Your code forces a submit_report tool, omits effort, and sets max_tokens just above typical response sizes. Which TWO changes should you make before switching? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Keep tool_choice forced and add a retry: when the 400 arrives, resend the same request with tool_choice set to \"any\" instead."
+      },
+      {
+        "key": "B",
+        "text": "Use tool_choice \"auto\" with strict: true on submit_report, and state in the prompt when the tool should be used."
+      },
+      {
+        "key": "C",
+        "text": "Leave effort unset, because Anthropic chose the new default and it is guaranteed to match your previous quality."
+      },
+      {
+        "key": "D",
+        "text": "Set effort explicitly, re-run your effort sweep and evals, and raise max_tokens to leave room for the extra thinking."
+      },
+      {
+        "key": "E",
+        "text": "Lower max_tokens to save cost, because a more capable model reaches the same answers while using fewer tokens."
+      }
+    ],
+    "answer": [
+      "B",
+      "D"
+    ],
+    "explanation": "Model releases can break code and shift behaviour with no change on your side. With forced tool use unsupported, the documented replacement is tool_choice auto plus strict tool use for schema-valid inputs, with the prompt saying when the tool applies. Because an omitted effort now runs one level lower and the model thinks more per turn, set effort explicitly, re-run your evals, and leave max_tokens headroom, since thinking counts toward it.",
+    "why": {
+      "A": "\"any\" is also forced tool use, so the retry fails with the same 400.",
+      "C": "A silent default change is exactly what breaks a quality baseline. The release notes advise setting effort explicitly and re-running the sweep.",
+      "E": "The notes say the model thinks more per turn at a given effort, so a tighter max_tokens means more truncated responses."
+    },
+    "whenRight": "C becomes acceptable once evals at the new default show that quality and cost still meet your bar.",
+    "trap": "\"by changing only the model ID\": read the breaking changes and behaviour differences, then fix the code and re-evaluate.",
+    "verified": [
+      "https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5",
+      "https://platform.claude.com/docs/en/agents-and-tools/tool-use/implement-tool-use",
+      "https://platform.claude.com/docs/en/build-with-claude/effort"
+    ]
+  },
+  {
+    "id": "DV-5.4-01",
+    "exam": "CCDV-F",
+    "domain": 5,
+    "skill": "5.4",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A support bot's system prompt starts with 'Current time: {now}', followed by about 30,000 tokens of static policy text, with cache_control on the last system block. Every response reports cache_read_input_tokens: 0 and cache_creation_input_tokens of about 30,000. What should you change?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Switch the breakpoint to the 1-hour TTL, so that the cache entry lives long enough to be reused by the next request that arrives."
+      },
+      {
+        "key": "B",
+        "text": "Add three more cache_control breakpoints inside the policy text, so that at least one of them can get a cache hit on each request."
+      },
+      {
+        "key": "C",
+        "text": "Cut the policy text below the model's minimum cacheable length, since prompts that large are written to the cache but never read."
+      },
+      {
+        "key": "D",
+        "text": "Move the timestamp out of the cached prefix, for example into the user message, so the system prompt is identical every time."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "A cache hit needs the prefix up to the breakpoint (tools, then system, then messages) to be 100% identical. A value that changes on every request at the very start of the system prompt changes the prefix every time, so each request writes a new entry and never reads one. Put the breakpoint on the last block that stays identical, and put volatile content after it.",
+    "why": {
+      "A": "TTL controls how long an entry lives. An entry whose prefix never repeats is never read, however long it lives.",
+      "B": "Every breakpoint's prefix still starts with the timestamp, so none of them can match. You are also limited to four breakpoints.",
+      "C": "Prompts below the minimum are simply not cached. The large static block is the part you want cached."
+    },
+    "whenRight": "A would help if the prefix were stable but requests arrived more than five minutes apart, so the default entry expired between them.",
+    "trap": "\"starts with 'Current time: {now}'\": volatile content before the breakpoint breaks every cache hit.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/prompt-caching"
+    ]
+  },
+  {
+    "id": "DV-5.4-02",
+    "exam": "CCDV-F",
+    "domain": 5,
+    "skill": "5.4",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 3,
+    "stem": "You are building a cost model for an app that uses prompt caching and is moving from Claude Sonnet 4.5 to a current model. The finance dashboard computes input cost as usage.input_tokens times the base input price, and estimates future cost from token counts measured last year on Sonnet 4.5. The figures don't match the invoice. Which TWO corrections should you make? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Treat input_tokens as the total input, since it already includes the cached tokens, and subtract cache_read_input_tokens from it."
+      },
+      {
+        "key": "B",
+        "text": "Count thinking tokens from the summarised thinking text visible in the response, since only the visible tokens are billed as output."
+      },
+      {
+        "key": "C",
+        "text": "Compute input as input_tokens + cache_creation_input_tokens + cache_read_input_tokens, pricing each at its own rate."
+      },
+      {
+        "key": "D",
+        "text": "Avoid the token counting endpoint for estimates, because each call is billed and counts against your Messages API rate limit."
+      },
+      {
+        "key": "E",
+        "text": "Recount representative prompts with the token counting endpoint for the target model instead of reusing the Sonnet 4.5 counts."
+      }
+    ],
+    "answer": [
+      "C",
+      "E"
+    ],
+    "explanation": "input_tokens covers only the uncached tokens after the last cache breakpoint. Total input is the sum of the three fields, and cache writes and cache reads are billed at different multiples of the base input price. Claude 4.7 and later models use a newer tokenizer that produces roughly 30% more tokens for the same text, so recount against the model you plan to use; the counting endpoint is free and has its own rate limit.",
+    "why": {
+      "A": "input_tokens excludes cached tokens, so subtracting cache reads from it undercounts even further.",
+      "B": "You are billed for the full thinking Claude generated, not the summary you see. usage.output_tokens is the authoritative billed total.",
+      "D": "Token counting is free to use, and its rate limits are separate from those for message creation."
+    },
+    "whenRight": "If the app used no caching and stayed on the same model, usage.input_tokens times the base price would already be the right input cost and neither correction would be needed.",
+    "trap": "\"usage.input_tokens times the base input price\" and \"counts measured last year\": cached tokens live in separate fields, and token counts depend on the tokenizer.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/prompt-caching",
+      "https://platform.claude.com/docs/en/build-with-claude/token-counting",
+      "https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking"
+    ]
+  },
+  {
+    "id": "DV-6.1-01",
+    "exam": "CCDV-F",
+    "domain": 6,
+    "skill": "6.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "A long-running research agent calls a search_docs tool hundreds of times per session. Each result is several thousand tokens and is needed only for the step right after it, but every result stays in the history, so cost climbs and answer quality falls late in the session. Another tool, get_case_facts, returns data the agent needs for the whole session. Which approach fits best?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Use context editing with clear_tool_uses_20250919: set a trigger, keep the last few uses, and exclude get_case_facts."
+      },
+      {
+        "key": "B",
+        "text": "Use context editing with clear_thinking_20251015 and keep only the latest thinking turn, since thinking is what grows the context most."
+      },
+      {
+        "key": "C",
+        "text": "Add a system-prompt instruction telling Claude to ignore search results older than the last three calls when it writes its answers."
+      },
+      {
+        "key": "D",
+        "text": "Delete old search_docs results from your stored history after each turn, replacing their tool_result blocks with plain user messages."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "Tool-result clearing is the lightest-touch way to prune stale tool output: once the trigger is reached, the server clears the oldest results and replaces them with placeholders, keeping the most recent ones. exclude_tools protects results that must persist, and clear_at_least makes each clearing worth the cache invalidation it causes. The edits are applied server-side, so your client keeps its full history.",
+    "why": {
+      "B": "The stem says the growth comes from large tool results, not from thinking blocks.",
+      "C": "An instruction removes no tokens. The old results still cost money and still dilute attention.",
+      "D": "Every tool_use must be followed immediately by its tool_result. Replacing those blocks with plain text breaks the pairing and the request fails with a 400 error."
+    },
+    "whenRight": "Compaction would fit better if the growth came from long back-and-forth reasoning and decisions that need summarising, rather than from disposable tool outputs.",
+    "trap": "\"needed only for the step right after it\", plus one tool needed \"for the whole session\": clear stale tool results by rule and exclude the one that matters.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/context-editing",
+      "https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls",
+      "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+    ]
+  },
+  {
+    "id": "DV-6.1-02",
+    "exam": "CCDV-F",
+    "domain": 6,
+    "skill": "6.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A contract-negotiation assistant holds conversations that run for hours, with many back-and-forth turns and decisions but few tool calls. Long sessions are approaching the context window limit, and answers get worse as the conversation grows. The team does not want to write or maintain its own summarisation code. What should it use?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Context editing with tool-result clearing, so that the server removes old tool results from the history once a token trigger is reached."
+      },
+      {
+        "key": "B",
+        "text": "Client-side truncation that drops the oldest turns whenever the input token count passes a threshold you choose for the session."
+      },
+      {
+        "key": "C",
+        "text": "Server-side compaction, which replaces older turns with a summary that Claude writes, so the conversation keeps its decisions."
+      },
+      {
+        "key": "D",
+        "text": "A model with the largest available context window, keeping the entire transcript so that no earlier decision can ever be lost."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "Compaction replaces the older turns of a conversation with a summary Claude writes on the server, so you need no summarisation code of your own. It keeps the active context small, which matters because response quality degrades as a conversation grows, and a summary preserves the decisions a long negotiation depends on.",
+    "why": {
+      "A": "With few tool calls, clearing tool results frees little and leaves the long dialogue untouched.",
+      "B": "Dropping the oldest turns throws away the decisions the rest of the negotiation relies on.",
+      "D": "A bigger window postpones the limit but not the quality loss, and every turn pays for the full history."
+    },
+    "whenRight": "A would be right for an agent whose context growth comes from many large, disposable tool outputs.",
+    "trap": "\"many back-and-forth turns and decisions but few tool calls\", and no wish to write summarisation code: that points to server-side compaction.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/compaction",
+      "https://platform.claude.com/docs/en/build-with-claude/context-editing"
+    ]
+  },
+  {
+    "id": "DV-6.2-01",
+    "exam": "CCDV-F",
+    "domain": 6,
+    "skill": "6.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "You are building a contract Q&A feature. Users upload contracts of 50,000 to 80,000 tokens and ask one question about each. The current prompt puts the role and rules, the user's question, and the uploaded contract text all in the system prompt, in that order. Answers on long contracts are weak, and one upload contained text that tried to override your rules. How should you restructure the prompt?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Keep everything in the system prompt, but move the contract ahead of the role and rules so that the instructions are read last."
+      },
+      {
+        "key": "B",
+        "text": "Keep the role and rules in the system prompt; in the user turn, put the contract first in <document> tags, then the question."
+      },
+      {
+        "key": "C",
+        "text": "Move the role and rules into the user turn after the contract, leaving the system prompt empty to avoid conflicting instructions."
+      },
+      {
+        "key": "D",
+        "text": "Put the question first in the user turn and the contract after it, so that Claude knows what to look for before it reads the text."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "Stable role and rules belong in the system prompt. For long inputs, put the document near the top and the query at the end, which Anthropic reports can improve response quality by up to 30% on complex inputs. Wrapping the upload in XML tags keeps it clearly separate from your instructions, and keeping untrusted content out of the system prompt avoids giving it the authority of your own instructions.",
+    "why": {
+      "A": "The untrusted upload still sits in the system prompt, with the same authority as your own instructions.",
+      "C": "You lose the focus a system-prompt role provides, and rules placed after the upload in the user turn are easier for uploaded text to imitate.",
+      "D": "The guidance is the reverse: long documents at the top, the query at the end."
+    },
+    "whenRight": "D's order is fine for short inputs, where placement matters far less than it does for documents of 20,000 tokens or more.",
+    "trap": "\"50,000 to 80,000 tokens\" and \"tried to override your rules\": long data first, query last, and untrusted content kept out of the system prompt.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices",
+      "https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls"
+    ]
+  },
+  {
+    "id": "DV-6.2-02",
+    "exam": "CCDV-F",
+    "domain": 6,
+    "skill": "6.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A year ago your agent under-used its search_kb tool, so the system prompt was changed to say: 'CRITICAL: You MUST ALWAYS call search_kb before EVERY answer, NO EXCEPTIONS.' After a move to a newer model, the agent calls search_kb even for greetings and simple follow-ups, which adds latency. What is the best next step?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Add a second instruction in capitals saying 'NEVER call search_kb for greetings', so that both rules carry equal weight."
+      },
+      {
+        "key": "B",
+        "text": "Set tool_choice to \"none\" on every request and paste the most common knowledge-base articles into the system prompt."
+      },
+      {
+        "key": "C",
+        "text": "Remove search_kb from the tool list and rely on the model's training data, since the newer model knows more than before."
+      },
+      {
+        "key": "D",
+        "text": "Soften it to 'Use search_kb when the answer depends on product documentation', then re-run your eval set."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "Newer Claude models are more responsive to the system prompt, so aggressive language written to fix under-triggering can now cause over-triggering. Anthropic's recommended fix is to soften it ('Use this tool when...') and describe when the tool applies. Treat it as iterative refinement: change the prompt, then measure on your eval set.",
+    "why": {
+      "A": "Stacking emphatic rules makes the prompt more brittle and leaves the absolute instruction that causes over-triggering in place.",
+      "B": "This disables the tool for questions that need it and bloats every request with articles most turns never use.",
+      "C": "Your product documentation is not reliably in any model's training data, so the agent would start guessing instead of retrieving."
+    },
+    "whenRight": "A narrow exception like A can help if softened guidance still over-triggers on one specific kind of message, but only after the absolute language is gone.",
+    "trap": "\"CRITICAL ... MUST ALWAYS ... NO EXCEPTIONS\", written for an older model: newer models follow it literally, so soften it and re-test.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+    ]
+  },
+  {
+    "id": "DV-6.3-01",
+    "exam": "CCDV-F",
+    "domain": 6,
+    "skill": "6.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "A pipeline extracts invoice data with structured outputs (output_config.format with a JSON schema). A developer removes all response checks, arguing that the schema is now guaranteed. The schema declares discount_pct as a number, and the business rules require a value from 0 to 100. Which handling should stay in the code?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Check stop_reason before parsing, since a refusal or max_tokens stop can break the schema, and validate 0-100 in code."
+      },
+      {
+        "key": "B",
+        "text": "None: constrained decoding guarantees both valid JSON and correct values, so any further check is redundant and adds latency."
+      },
+      {
+        "key": "C",
+        "text": "Pull the first {...} block out of the text with a regular expression, in case Claude wraps the JSON in a short explanation."
+      },
+      {
+        "key": "D",
+        "text": "Add minimum: 0 and maximum: 100 to the schema so that the API enforces the range, then remove the code-side check entirely."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "Structured outputs return schema-valid JSON in most cases, but they don't promise semantic correctness. A refusal (stop_reason \"refusal\") or a max_tokens stop can produce output that doesn't match the schema, so check stop_reason first. Numeric constraints such as minimum and maximum aren't supported in the schema, so ranges must still be validated in code.",
+    "why": {
+      "B": "Schema compliance isn't the same as correct values, and the documented exceptions (refusal, truncation) still happen.",
+      "C": "With JSON outputs the response text is the JSON. Regex extraction is a workaround for unconstrained text, and it hides real failures such as truncation.",
+      "D": "minimum and maximum are listed as unsupported in structured-output schemas, and unsupported features return a 400 error. SDK helpers may move them into descriptions, but nothing enforces them."
+    },
+    "whenRight": "C-style defensive extraction is reasonable when you can't use structured outputs and must parse JSON out of free-form text.",
+    "trap": "\"the schema is now guaranteed\": the guarantee covers shape, not business rules, and it has documented exceptions.",
+    "verified": [
+      "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+    ]
+  },
+  {
+    "id": "DV-6.3-02",
+    "exam": "CCDV-F",
+    "domain": 6,
+    "skill": "6.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "An internal assistant answers employee questions about an 80-page HR policy supplied in the prompt. In review, it confidently cited a 'section 7.4 remote-work stipend' that does not exist in the policy. Answers must be traceable to the policy text. Which change best reduces this kind of error?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Ask Claude to rate its confidence from 1 to 10 after each answer, and show employees only the answers it rates 8 or higher."
+      },
+      {
+        "key": "B",
+        "text": "Have Claude first extract word-for-word quotes relevant to the question, answer only from them, and say so if none exist."
+      },
+      {
+        "key": "C",
+        "text": "Move to the largest available model, since larger models don't cite sections that are missing from the documents they're given."
+      },
+      {
+        "key": "D",
+        "text": "Lower max_tokens so that answers stay short, because hallucinations mostly appear in the later parts of long responses."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "For long documents, asking Claude to extract direct quotes first and to base its answer on them grounds the response in the actual text. Explicitly allowing 'I don't know', and requiring a supporting quote for each claim (retracting any claim without one), makes answers auditable. These techniques reduce hallucinations but don't eliminate them, so critical answers still need validation.",
+    "why": {
+      "A": "A self-rated confidence score is just another claim from the model, not verification. A confident fabrication can rate itself highly.",
+      "C": "Larger models hallucinate less often, but not never. Traceability needs grounding whichever model you use.",
+      "D": "Shorter output isn't more accurate, and it can cut off the useful part of the answer."
+    },
+    "whenRight": "A could serve as an extra signal for routing answers to human review, but only alongside quote grounding, never as the verification itself.",
+    "trap": "\"confidently cited\" and \"must be traceable\": treat confident output with skepticism and ground it in quotes.",
+    "verified": [
+      "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations"
+    ]
+  },
+  {
+    "id": "DV-8.1-01",
+    "exam": "CCDV-F",
+    "domain": 8,
+    "skill": "8.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your support agent uses a client tool, issue_refund. Refunds above $200 need human approval, so your dispatcher pauses whenever Claude returns a tool_use for one. A reviewer rejects a $450 refund. How should your code report this back to Claude?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Leave out the tool_result for that tool_use, and send a user text message saying that a reviewer rejected the refund."
+      },
+      {
+        "key": "B",
+        "text": "Send a user message with a text block explaining the rejection first, followed by a tool_result marked as successful."
+      },
+      {
+        "key": "C",
+        "text": "Return a tool_result for that tool_use_id with is_error: true and a message giving the reason and what to offer."
+      },
+      {
+        "key": "D",
+        "text": "Return a tool_result with empty content, so that Claude infers nothing happened and asks the customer what to do next."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "Client tools run in your application, so your dispatcher is the natural place for an approval gate: pause on the tool_use, get a decision, then answer it. Every tool_use needs a matching tool_result immediately after it, and is_error: true with an instructive message (what happened, what to try next) lets Claude adapt, for example by offering an escalation, instead of guessing.",
+    "why": {
+      "A": "A tool_use with no tool_result immediately after it causes a 400 error ('tool_use ids were found without tool_result blocks immediately after').",
+      "B": "tool_result blocks must come first in the user message's content, so text before them is rejected. Marking the result successful is also simply false.",
+      "D": "An empty result looks like a success with no data, so Claude may tell the customer the refund went through."
+    },
+    "whenRight": "D's empty result is valid for a tool that succeeded and genuinely returns nothing, such as an acknowledged log write.",
+    "trap": "\"How should your code report this back\": every tool_use gets its tool_result, and a failure goes inside it with is_error.",
+    "verified": [
+      "https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls",
+      "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"
+    ]
+  },
+  {
+    "id": "DV-8.1-02",
+    "exam": "CCDV-F",
+    "domain": 8,
+    "skill": "8.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "An agent has 14 tools, including create_pr, review_pr, merge_pr, list_prs, send_slack and post_slack_thread, each with a one-line description such as 'Merges a PR.' Logs show Claude often picks the wrong tool or fills parameters incorrectly. Which change will most improve tool selection?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Set tool_choice to {\"type\": \"any\"} on every request, so that Claude always calls one of the tools instead of answering in text."
+      },
+      {
+        "key": "B",
+        "text": "Split each tool further into narrower single-action tools, so that every tool has fewer parameters for Claude to fill in."
+      },
+      {
+        "key": "C",
+        "text": "List all 14 tool names in the system prompt in capital letters, and instruct Claude to choose more carefully among them."
+      },
+      {
+        "key": "D",
+        "text": "Group related actions behind an action parameter, prefix names by service (github_, slack_), and expand each description."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "Tool descriptions are by far the most important factor in tool performance: say what the tool does, when to use it and when not to, what each parameter means, and its limitations, in at least 3 to 4 sentences. Consolidating related operations into fewer tools and namespacing names by service both reduce selection ambiguity.",
+    "why": {
+      "A": "Forcing a call doesn't help Claude pick the right tool, and some current models reject forced tool_choice with a 400 error.",
+      "B": "More, narrower tools increase overlap and selection ambiguity, the opposite of the guidance.",
+      "C": "Claude already sees every tool definition. Shouting the names adds no information about when each one applies."
+    },
+    "whenRight": "Adding input_examples would be a good next step if the remaining errors were mostly malformed values in complex, nested parameters.",
+    "trap": "\"one-line description\": thin descriptions and overlapping tools are the usual cause of wrong tool choice.",
+    "verified": [
+      "https://platform.claude.com/docs/en/agents-and-tools/tool-use/implement-tool-use"
+    ]
+  },
+  {
+    "id": "DV-8.2-01",
+    "exam": "CCDV-F",
+    "domain": 8,
+    "skill": "8.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "You built a local MCP server that Claude Desktop launches over the stdio transport. It worked until you added print() debug logging to each tool handler. Now the client reports parse errors and the connection drops. What is the correct fix?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Switch the server to the Streamable HTTP transport, because servers that use stdio are not permitted to produce any log output."
+      },
+      {
+        "key": "B",
+        "text": "Write the debug logs to stderr, because stdout must carry nothing except valid, newline-delimited MCP JSON-RPC messages."
+      },
+      {
+        "key": "C",
+        "text": "Prefix each log line with '#' so that the client's JSON-RPC parser treats the line as a comment and simply skips over it."
+      },
+      {
+        "key": "D",
+        "text": "Flush stdout after every log line, so that log text and protocol messages are never interleaved in the middle of a line."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "With the stdio transport, the client launches the server as a subprocess and reads JSON-RPC messages from its stdout. The spec says the server MUST NOT write anything to stdout that is not a valid MCP message, and MAY write UTF-8 log strings to stderr, which the client can capture, forward or ignore.",
+    "why": {
+      "A": "stdio servers can log, to stderr. Moving to HTTP is a large change that doesn't fix the real mistake.",
+      "C": "JSON has no comment syntax. Any non-MCP line on stdout still breaks the message stream.",
+      "D": "Flushing changes timing, not content. The log lines are still non-MCP data on stdout."
+    },
+    "whenRight": "A becomes the right move when the server must be shared remotely by many clients: Streamable HTTP uses a single MCP endpoint for POST and GET, servers must validate the Origin header, and they should authenticate all connections.",
+    "trap": "\"stdio transport\" plus \"print() debug logging\": stdout is the protocol channel, so logs go to stderr.",
+    "verified": [
+      "https://modelcontextprotocol.io/specification/2025-06-18/basic/transports"
+    ]
+  },
+  {
+    "id": "DV-8.3-01",
+    "exam": "CCDV-F",
+    "domain": 8,
+    "skill": "8.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your API-based agent already uses the code execution tool. Finance wants it to follow a 30-page quarterly-report procedure that comes with a report template and a Python script that validates the finished report. The procedure applies to only about 5% of requests. Which approach fits best?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Package the procedure, template and script as an Agent Skill whose description says when to use it, and add it to the container."
+      },
+      {
+        "key": "B",
+        "text": "Paste the full procedure and template into the system prompt, so the agent always has the instructions on hand when it needs them."
+      },
+      {
+        "key": "C",
+        "text": "Build an MCP server exposing a get_procedure tool that returns the whole 30-page procedure text whenever the agent calls it."
+      },
+      {
+        "key": "D",
+        "text": "Write a custom client tool for each section of the procedure, so that the agent can call the right section's tool at every step."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "Skills package instructions, resources and scripts with progressive disclosure: only the name and description (about 100 tokens) load up front, SKILL.md loads when a request matches, and bundled files are read only when needed. Scripts run through bash, and only their output enters the context. On the API, Skills run in the code execution container, which this agent already uses.",
+    "why": {
+      "B": "Every request, including the 95% that don't need it, pays for 30 pages of tokens and carries instructions that can distract.",
+      "C": "MCP is for connecting to live external systems shared by many apps. Serving a static document this way still dumps the whole text into context and adds a server to run.",
+      "D": "Splitting procedural knowledge across many tools bloats the tool list and fragments guidance Claude needs to read as a whole."
+    },
+    "whenRight": "C (an MCP server) would be right if the agent needed live data from the finance system and several Claude applications had to share that access, as in the official sample about an internal inventory REST API.",
+    "trap": "\"applies to only about 5% of requests\", plus a template and a script: procedural knowledge with code, loaded on demand, is what Skills are for.",
+    "verified": [
+      "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview"
+    ]
+  }
+]

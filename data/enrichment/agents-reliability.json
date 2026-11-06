@@ -1,0 +1,309 @@
+{
+  "OFF-01": {
+    "domain": 1, "task": "1.4", "alsoTasks": ["1.5"],
+    "why": {
+      "B": "A stronger system-prompt rule is still probabilistic. The agent already ignores the ordering 12% of the time, and with refunds at stake any non-zero failure rate is too high.",
+      "C": "Few-shot examples raise the typical rate of calling get_customer first but cannot guarantee it. A customer who volunteers order details is exactly the case where the model takes a shortcut.",
+      "D": "A routing classifier decides which tools exist for a request, not the order they run in. For an order request, lookup_order would still be enabled and could still run before verification."
+    },
+    "whenRight": "If skipping verification only caused a harmless extra lookup, with no money or identity risk, prompt guidance (B or C) would be a proportionate first step.",
+    "trap": "\"misidentified accounts and incorrect refunds\": a financial consequence means deterministic enforcement, not better wording."
+  },
+  "OFF-02": {
+    "domain": 2, "task": "2.1", "alsoTasks": ["4.2"],
+    "why": {
+      "A": "Few-shot examples work around the symptom while the two one-line descriptions stay ambiguous. They cost tokens on every call and are a good second step, not the first.",
+      "C": "A keyword routing layer is extra infrastructure that is brittle against paraphrases and bypasses the model's own language understanding.",
+      "D": "Merging tools is a real redesign with a larger blast radius. It can be valid, but it is not the cheap root-cause fix that a 'first step' asks for."
+    },
+    "whenRight": "If the descriptions were already detailed and misrouting persisted only on genuinely ambiguous requests, targeted few-shot examples (A) would be next. If the two tools really were redundant, D would be next.",
+    "trap": "\"minimal descriptions\" combined with \"first step\"."
+  },
+  "OFF-03": {
+    "domain": 5, "task": "5.2", "alsoTasks": ["4.2"],
+    "why": {
+      "B": "Self-reported confidence is poorly calibrated. The agent is already confidently wrong on the policy-exception cases, so a threshold would not route them.",
+      "C": "A trained classifier needs labeled data and ML infrastructure. That is disproportionate before the cheap prompt fix has been tried.",
+      "D": "Sentiment measures frustration, not case complexity. An angry customer with a simple damage replacement should be resolved, not escalated."
+    },
+    "whenRight": "C becomes reasonable only after explicit criteria with few-shot examples have been tried and calibration still fails at scale, with plenty of labeled ticket history available.",
+    "trap": "\"escalates straightforward cases while attempting ... policy exceptions\": the decision boundary is unclear, so make it explicit."
+  },
+  "OFF-07": {
+    "domain": 1, "task": "1.2",
+    "why": {
+      "A": "The synthesis agent can only combine what it receives. Detecting gaps downstream cannot create coverage that was never assigned, and the logs already show where the scope was lost.",
+      "C": "The search agent ran the queries it was given. Its scope came from the coordinator's three visual-arts subtasks.",
+      "D": "Nothing suggests filtering. Non-visual sources were never requested in the first place."
+    },
+    "whenRight": "If the coordinator's subtasks had covered music, writing and film and the report still lacked them, the fault would be downstream (C or D).",
+    "trap": "\"When you examine the coordinator's logs\": the evidence points at decomposition, not execution."
+  },
+  "OFF-08": {
+    "domain": 5, "task": "5.3", "alsoTasks": ["2.2"],
+    "why": {
+      "B": "Retrying locally is fine, but collapsing everything into a generic 'search unavailable' status removes the query, the failure type and the partial results that the coordinator needs to choose a recovery.",
+      "C": "Reporting a failure as an empty success is silent suppression. The coordinator believes no sources exist and the report quietly loses coverage.",
+      "D": "Ending the whole research run because of one recoverable timeout throws away all the other subagents' work."
+    },
+    "whenRight": "B's local retry is the right first layer for transient timeouts. Combine it with A: retry locally, then propagate structured context if the retries fail.",
+    "trap": "\"best enables intelligent recovery\": the coordinator needs details, not a status flag."
+  },
+  "OFF-09": {
+    "domain": 2, "task": "2.3", "alsoTasks": ["1.2"],
+    "why": {
+      "B": "Batching verifications until the end creates blocking dependencies, because later synthesis steps rely on facts verified earlier.",
+      "C": "Giving the synthesis agent the full search toolset over-provisions it. Agents with tools outside their role tend to misuse them, and it erodes separation of concerns.",
+      "D": "Speculative caching cannot predict which claims will need checking, and it bloats context with unused material."
+    },
+    "whenRight": "If most verifications needed deep investigation rather than simple lookups, keeping every verification routed through the coordinator (the status quo) would be justified.",
+    "trap": "\"85% of these verifications are simple fact-checks\": give a scoped cross-role tool for the high-frequency case."
+  },
+  "COM-01": {
+    "domain": 5, "task": "5.6", "alsoTasks": ["5.3"],
+    "why": {
+      "A": "Picking one value with a heuristic is the arbitrary selection the guide warns against. A footnote understates a conflict that could change the conclusions.",
+      "B": "Passing both numbers without flagging them hides the conflict signal. Synthesis may silently pick one value or average them.",
+      "C": "Halting mid-analysis blocks the pipeline for no gain. The coordinator can reconcile just as well after the analysis is complete and annotated."
+    },
+    "whenRight": "If the two figures came from different periods (for example 2023 vs 2025 data), the fix is to capture publication or collection dates so the difference reads as change over time, not a contradiction.",
+    "trap": "\"Both sources look credible\": with no basis for choosing one, preserve both and annotate the conflict."
+  },
+  "COM-02": {
+    "domain": 1, "task": "1.2", "alsoTasks": ["1.3"],
+    "why": {
+      "A": "Sending results straight to the report agent bypasses the hub. You lose observability and consistent error handling, and you skip synthesis entirely.",
+      "B": "The document agent would take on synthesis, which is outside its role, and would pull data peer-to-peer instead of through the coordinator.",
+      "D": "Concatenating raw outputs is not integration. There is no reconciliation, no deduplication and no consolidated citations."
+    },
+    "whenRight": "If the coordinator first found coverage gaps in the returned results, re-delegating targeted searches before invoking synthesis (the iterative refinement loop) would come first.",
+    "trap": "\"integrated research report\": integration is the synthesis agent's job, and the coordinator routes the work to it.",
+    "note": "Remember that the coordinator has to put both result sets into the synthesis subagent's prompt (ideally as structured claim/source data). Subagents do not inherit the coordinator's context."
+  },
+  "COM-03": {
+    "domain": 5, "task": "5.3", "alsoTasks": ["2.2"],
+    "why": {
+      "A": "A separate error-handling agent with a shared queue adds a new component and sends commands directly to subagents, which bypasses the coordinator's control of the flow.",
+      "B": "Labelling failures as success hides them. A coordinator that treats every response as successful cannot react to real failures.",
+      "C": "The coordinator cannot predict parser hangs or corrupted sections without doing the parsing itself, and that moves heavy work into the hub."
+    },
+    "whenRight": "For the password-protected files (a permission error, not a transient one), local retries are pointless. Those should be propagated at once with a clear category, which is the 'errors it cannot resolve' part of D.",
+    "trap": "\"excessive coordinator involvement in routine error handling\": handle errors at the lowest level that can resolve them."
+  },
+  "COM-05": {
+    "domain": 5, "task": "5.3", "alsoTasks": ["5.6"],
+    "why": {
+      "A": "Leaving out the gaps lets readers assume full coverage. Missing news and social data silently skews the conclusions.",
+      "B": "Failing the whole synthesis throws away the three source categories that succeeded. A partial failure should degrade the result, not stop it.",
+      "C": "Retry decisions belong to the coordinator, not the synthesis agent, and holding synthesis until slow sources recover may never finish."
+    },
+    "whenRight": "If the missing categories were essential and the timeouts looked transient, the coordinator (not synthesis) should re-delegate those searches with a longer timeout before running synthesis.",
+    "trap": "\"mixed-quality upstream inputs\": be transparent about coverage instead of choosing between all or nothing."
+  },
+  "COM-06": {
+    "domain": 5, "task": "5.3",
+    "why": {
+      "B": "Skipping silently hides the missing document. The report then claims coverage it does not have.",
+      "C": "A corrupted file is not a transient fault, so three retries with backoff waste time and give the same result.",
+      "D": "Ending the entire research workflow over one unreadable document is a disproportionate response to a local failure."
+    },
+    "whenRight": "C would be right if the failure were transient, for example a timeout from a remote document store, where a local retry can actually succeed.",
+    "trap": "\"corrupted PDF ... cannot parse\": the error is not retryable, so report it with context."
+  },
+  "COM-07": {
+    "domain": 2, "task": "2.1", "alsoTasks": ["1.2"],
+    "why": {
+      "A": "A pre-routing classifier adds infrastructure while the two near-identical descriptions stay in place.",
+      "C": "Few-shot routing examples treat the symptom, and the overlapping tool names and descriptions keep competing.",
+      "D": "Updating only the document tool leaves 'analyze_content' still claiming generic content analysis, so the overlap remains."
+    },
+    "whenRight": "D would be enough if the web tool already had a clearly web-specific name and description and only the document tool was vague.",
+    "trap": "\"analyzes content\" vs \"analyzes documents\": near-identical descriptions are the root cause."
+  },
+  "COM-08": {
+    "domain": 1, "task": "1.2",
+    "why": {
+      "B": "A hub does not reduce API calls. It adds a hop. Efficiency is not the reason for the pattern.",
+      "C": "Retry logic can live anywhere. It is not something that only coordinator routing makes possible.",
+      "D": "Subagents get their context through prompts. Nothing about serialization requires the coordinator."
+    },
+    "whenRight": "If the concern were latency from frequent simple lookups, the sanctioned exception is a narrowly scoped cross-role tool (such as verify_fact), not a direct agent-to-agent channel.",
+    "trap": "\"main advantage\": observability, consistent error handling and controlled information flow."
+  },
+  "COM-10": {
+    "domain": 2, "task": "2.3",
+    "why": {
+      "B": "Removing URL fetching entirely takes away a legitimate capability and adds coordinator round-trips for routine document loads.",
+      "C": "A denylist of search domains is never complete. The agent can still reach other search pages or aggregators.",
+      "D": "A prompt instruction is probabilistic, and the agent is already misusing the tool despite its obvious purpose."
+    },
+    "whenRight": "B would be right if the document agent almost never needed to fetch by URL, for example when all documents already arrive through the coordinator.",
+    "trap": "\"general-purpose tool fetch_url\": constrain the interface rather than police how it is used."
+  },
+  "COM-11": {
+    "domain": 1, "task": "1.2",
+    "why": {
+      "A": "Deduplicating afterwards still pays for the doubled work. It cleans the output, not the cost.",
+      "C": "Peer-to-peer shared state adds coordination complexity and race conditions, and it bypasses the coordinator's role.",
+      "D": "Running the agents sequentially gives up parallelism and adds latency to solve a scoping problem."
+    },
+    "whenRight": "D would be right if document analysis genuinely depended on the search results, for example when it can only analyze documents the search agent found.",
+    "trap": "\"Token usage nearly doubles\": fix the scope before the work starts."
+  },
+  "COM-12": {
+    "domain": 5, "task": "5.3", "alsoTasks": ["2.2"],
+    "why": {
+      "A": "One coverage percentage hides which source failed and why, so the coordinator cannot target a retry.",
+      "B": "Treating '0 results' as a failure triggers pointless retries and throws away a valid finding (nothing exists).",
+      "C": "Local retry of transient failures is good practice, but on its own it still does not tell the coordinator that '0 results' was a successful empty query."
+    },
+    "whenRight": "C would be the answer if the question were how to keep transient network blips from reaching the coordinator at all. It belongs in the design alongside D.",
+    "trap": "\"0 results\" vs \"Connection timeout\": a valid empty result and an access failure need different handling."
+  },
+  "COM-13": {
+    "domain": 5, "task": "5.1",
+    "why": {
+      "A": "Compressing everything to 20K tokens loses detail and source attribution. Critical mid-input findings may be the first to go.",
+      "B": "Streaming the parts in order does not change their relative position. The middle content is still in the middle.",
+      "D": "Rotating the order only changes which findings get lost on a given run."
+    },
+    "whenRight": "Shrinking the input (A's direction) is right when the aggregate exceeds the synthesis agent's budget. Do it upstream with structured outputs, as in COM-14.",
+    "trap": "\"reliably cites the first 15K and the last 10K\": this is the lost-in-the-middle effect."
+  },
+  "COM-14": {
+    "domain": 5, "task": "5.1", "alsoTasks": ["5.6"],
+    "why": {
+      "B": "An extra summarization hop adds latency and is another place where attribution gets lost. It treats the symptom downstream.",
+      "C": "Sequential batches lose the cross-source view that synthesis needs and add state-management complexity.",
+      "D": "A vector store adds infrastructure, and retrieval can miss findings the synthesis agent never thinks to search for."
+    },
+    "whenRight": "B would be reasonable if the upstream agents were third-party or otherwise could not be changed.",
+    "trap": "\"including page content\" / \"including chains of thought\": the waste is created at the source."
+  },
+  "COM-46": {
+    "domain": 2, "task": "2.1",
+    "why": {
+      "A": "A preprocessing classifier is over-engineering before you have checked the cheapest root cause.",
+      "B": "With four tools, tool count is not the problem. Similar descriptions are.",
+      "C": "Few-shot examples for 'all possible' patterns cost a lot of tokens and still leave ambiguous descriptions in place."
+    },
+    "whenRight": "A small set of targeted few-shot examples (a narrower C) is the next step if the descriptions are already clear and misrouting persists on ambiguous requests.",
+    "trap": "\"check first\": start with the tool descriptions."
+  },
+  "COM-47": {
+    "domain": 1, "task": "1.4", "alsoTasks": ["4.2"],
+    "why": {
+      "A": "A separate model call to pre-split messages adds latency and another component. The agent can learn the decomposition pattern itself.",
+      "B": "Universal tools blur tool boundaries and make parameter mixing worse, not better.",
+      "D": "Validate-and-reprompt catches misses after the fact and adds loops without teaching the pattern."
+    },
+    "whenRight": "A becomes reasonable if few-shot guidance still fails and multi-issue messages are common enough to justify a dedicated decomposition step.",
+    "trap": "\"94% on single-issue requests\": the agent's basics work, so it only needs to be shown the multi-issue pattern.",
+    "note": "The official guide (1.4) frames multi-concern requests as decomposing into distinct items and investigating each with shared context (see COM-48). Few-shot examples that demonstrate that decomposition are a proportionate first step, so C is defensible. If an option explicitly offers decomposition with shared context, prefer that option."
+  },
+  "COM-48": {
+    "domain": 1, "task": "1.4",
+    "why": {
+      "A": "Checkpoints keep the work sequential and do nothing about the redundant customer lookups.",
+      "B": "One mega-tool hides which operation is running and removes the agent's control over what to investigate.",
+      "D": "Example sequences still show sequential investigation without shared context, so the redundant fetches remain."
+    },
+    "whenRight": "D would be a cheaper first step if the only problem were the order of tool calls rather than redundant, sequential investigation.",
+    "trap": "\"investigating issues sequentially and fetching redundant customer data\"."
+  },
+  "COM-50": {
+    "domain": 5, "task": "5.2",
+    "why": {
+      "A": "Cancelling a shipped order is covered by normal policy. 'The customer might change their mind' is speculation, not an escalation trigger.",
+      "B": "The tracking evidence is clear, and the agent can present it and follow the delivered-but-missing process. Possible discomfort is not a policy gap.",
+      "D": "Two issues in one message is complexity, not a trigger. The agent should decompose and resolve both."
+    },
+    "whenRight": "B would warrant escalation if the customer explicitly asked for a human, or if policy required human sign-off on disputed deliveries.",
+    "trap": "\"say nothing about competitor prices\": policy is silent, so the agent must not invent policy."
+  },
+  "COM-52": {
+    "domain": 4, "task": "4.6", "alsoTasks": ["4.1"],
+    "why": {
+      "B": "Asking 'Does this fully resolve your issue?' pushes the gap-finding onto the customer and adds turns, which hurts first-contact resolution.",
+      "C": "A bigger model does not fix missing completeness criteria, and it adds cost and routing complexity.",
+      "D": "Five fixed case types cannot cover gaps that vary from case to case."
+    },
+    "whenRight": "D would be better if the missing details clustered in a few recurring case types that examples could cover.",
+    "trap": "\"gaps vary case by case\" and \"without adding human oversight\".",
+    "note": "The official guide (4.6) notes that a model reviewing its own output in the same context is less likely to question its reasoning, and that an independent review instance catches more. Among these options A is still the best. If an option offers a separate reviewer instance with an explicit completeness checklist, prefer that one."
+  },
+  "COM-53": {
+    "domain": 1, "task": "1.1", "alsoTasks": ["2.3"],
+    "why": {
+      "A": "Speculative execution runs tools nobody asked for, wastes calls and fills the context with unneeded data.",
+      "B": "max_tokens limits output length. It has nothing to do with whether Claude batches tool requests.",
+      "C": "Composite tools work, but they add tool surface and bake one fixed combination into the API. That is a bigger change than prompting for parallel calls."
+    },
+    "whenRight": "C becomes attractive if get_customer and lookup_order are needed together in nearly every conversation, which the tool-design guidance supports.",
+    "trap": "\"even when both are needed initially\": Claude can already request several tools in one response.",
+    "note": "Per the docs, Claude can emit several tool_use blocks in one response, and your loop must send all the matching tool_result blocks back in a single user message. Option D's 'return all results together' is the loop's job. The community answer is reasonable, but composite tools (C) are also endorsed by Anthropic's tool-writing guidance, so read D as the 'smallest change' answer."
+  },
+  "COM-54": {
+    "domain": 5, "task": "5.1",
+    "why": {
+      "A": "Raising the threshold only delays summarization. The details are still lost when it eventually runs.",
+      "B": "Retrieval triggered by heuristics like 'as I mentioned' misses implicit references and adds infrastructure.",
+      "D": "A better summary prompt helps, but repeated compression is still lossy, and nothing guarantees the facts survive each cycle."
+    },
+    "whenRight": "D is a useful complement for non-transactional context such as tone and history. It just should not be the only place exact amounts live.",
+    "trap": "\"condensed into vague summaries\": move transactional facts out of the summarized history."
+  },
+  "COM-55": {
+    "domain": 5, "task": "5.2",
+    "why": {
+      "A": "Self-assessed confidence is unreliable, and above the threshold the agent would still be guessing between real accounts.",
+      "C": "Returning one 'most likely' match hides the ambiguity. The ranking would still be wrong in some share of cases, now invisibly.",
+      "D": "Examples of 'reasoning' about which match to choose still teach heuristic selection. The rule must be to ask."
+    },
+    "whenRight": "C-style single results are fine when the lookup key is already unique, such as an order number or email the customer supplied.",
+    "trap": "\"multiple matches\": ask for another identifier and do not pick one heuristically."
+  },
+  "COM-56": {
+    "domain": 2, "task": "2.1", "alsoTasks": ["4.1"],
+    "why": {
+      "B": "Base-model associations would not produce such a sharp, systematic split when the descriptions are clear. Check your own prompt before blaming the model.",
+      "C": "Fine-tuning is disproportionate and is not the lever an architect reaches for here.",
+      "D": "The stem says the descriptions are already clear and unambiguous, so editing them targets the wrong layer."
+    },
+    "whenRight": "D would be right if the descriptions were vague or overlapping.",
+    "trap": "\"Tool descriptions are clear and unambiguous\" and a single keyword flips behaviour, which points to the system prompt."
+  },
+  "COM-58": {
+    "domain": 1, "task": "1.1",
+    "why": {
+      "B": "Parsing natural-language phrases is brittle. Wording changes, and the model may say 'anything else?' while still needing tools.",
+      "C": "An iteration cap as the primary stop cuts off legitimate work or runs pointless extra turns. Use it only as a safety net.",
+      "D": "A response can contain explanatory text and tool_use blocks together, so the presence of text says nothing about completion."
+    },
+    "whenRight": "C is right as a secondary guard (for example max_turns in the Agent SDK) alongside stop_reason, never instead of it.",
+    "trap": "\"What determines this decision\": the structured signal, not heuristics.",
+    "note": "The API docs list further stop reasons (max_tokens, pause_turn, refusal and others). A production loop handles those too, but the exam's core rule is: continue on tool_use, stop on end_turn."
+  },
+  "COM-59": {
+    "domain": 1, "task": "1.5",
+    "why": {
+      "B": "Changing your own tools and wrapping every third-party tool spreads normalization over many places that each have to be maintained.",
+      "C": "A normalize_data tool relies on the model remembering to call it every time and adds a loop iteration per lookup.",
+      "D": "Format documentation in the prompt is probabilistic interpretation and costs tokens on every request."
+    },
+    "whenRight": "B is reasonable if you own every tool and want all consumers, not just this agent, to receive clean formats.",
+    "trap": "\"third-party MCP servers you cannot modify\" and \"most maintainable\".",
+    "note": "Per the current Agent SDK docs, a PostToolUse hook can replace what Claude sees with updatedToolOutput (the older updatedMCPToolOutput covers MCP tools only) or append additionalContext."
+  },
+  "COM-60": {
+    "domain": 4, "task": "4.2", "alsoTasks": ["2.1"],
+    "why": {
+      "A": "That is a description change, not few-shot prompting. It is useful, but the stem has already chosen few-shot.",
+      "B": "Grouping examples by tool never shows the contrast between the two tools on the same ambiguous request.",
+      "D": "Many clear-cut examples teach nothing about the ambiguous cases that fail, and they cost tokens."
+    },
+    "whenRight": "A would come first if the tool descriptions were minimal, as in OFF-02.",
+    "trap": "\"especially for ambiguous queries\": target the examples at the ambiguity and include the reasoning.",
+    "note": "The official guide (4.2) says 2-4 targeted examples, and this item says 4-6. The principle is the same (targeted at ambiguous cases, with rationale). Don't memorize the count from this item."
+  }
+}

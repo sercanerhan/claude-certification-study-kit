@@ -1,0 +1,29 @@
+{
+ "DVO-01": {
+  "why": {
+   "A": "Parallel synchronous calls finish sooner, but the job has no deadline before morning, and per-token cost stays the same, so speed buys nothing here.",
+   "C": "max_tokens only caps output length. It doesn't make per-token pricing cheaper, and it risks cutting reports short.",
+   "D": "Downsizing the model regardless of quality trades away the result itself. The requirement is lower cost for the same work, not worse work."
+  },
+  "whenRight": "If the report were needed within minutes (an interactive or blocking use), synchronous calls (A) would be right, possibly with a smaller model chosen for quality and latency, not 'regardless of quality'.",
+  "trap": "\"non-urgent … not needed until the following morning\" + \"cost is the primary concern\": latency-tolerant bulk work points to the Message Batches API."
+ },
+ "DVO-02": {
+  "why": {
+   "A": "Temperature controls sampling randomness, not whether the model obeys injected instructions.",
+   "C": "Asking users politely isn't an enforceable control. Attackers ignore it, and the hidden text isn't written by the user anyway.",
+   "D": "A model that follows instructions more readily can be easier to steer with injected instructions. Model size isn't a security boundary."
+  },
+  "whenRight": "None of the others becomes a primary defence. A stronger model and clear system-prompt instructions can be extra layers, but only on top of isolating untrusted content and least-privilege guardrails.",
+  "trap": "\"hidden text instructing the model\" in user-submitted pages: treat retrieved content as untrusted data and enforce controls outside the prompt."
+ },
+ "DVO-03": {
+  "why": {
+   "A": "Logic in system prompts isn't executable, can't reach the live service, and would have to be copied into every application.",
+   "C": "Pasting data gives a stale snapshot, wastes context on every request, and can't perform operations.",
+   "D": "Built-in tools don't reach arbitrary internal APIs. You need a custom tool or an MCP server that wraps the service."
+  },
+  "whenRight": "If only one application needed the inventory service and reuse didn't matter, a custom tool (function calling) inside that app would be simpler than running an MCP server.",
+  "trap": "\"reusable across several Claude applications and maintained independently\": a shared MCP server."
+ }
+}

@@ -1,0 +1,701 @@
+[
+  {
+    "id": "A-S1-01",
+    "scenario": "S1",
+    "domain": 1,
+    "task": "1.5",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Finance policy says no refund above $500 may be issued without human approval. The system prompt states this rule, yet audit logs show the agent issued six refunds between $520 and $900 last month, usually after long conversations in which the customer pushed hard. You need a guarantee that this cannot happen again, and customers with large refunds must still be routed somewhere useful. What should you implement?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Move the $500 rule to the top of the system prompt in capitals and add few-shot examples of the agent declining large refunds and offering escalation."
+      },
+      {
+        "key": "B",
+        "text": "Register a PreToolUse hook on process_refund that denies calls above $500 and returns a reason telling the agent to use escalate_to_human instead."
+      },
+      {
+        "key": "C",
+        "text": "Register a PostToolUse hook on process_refund that detects completed refunds above $500 and automatically opens a reversal ticket for finance."
+      },
+      {
+        "key": "D",
+        "text": "Remove process_refund from the agent's tools so that every refund, whatever the amount, has to go through escalate_to_human."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "A hook that intercepts the outgoing tool call runs in code before the refund executes, so the limit holds no matter how the conversation went. Returning a deny decision with a reason lets the agent redirect the customer to human escalation, while refunds under the threshold still resolve on first contact. Prompt instructions are probabilistic, and the logs show they already fail under pressure.",
+    "why": {
+      "A": "Better placement and examples raise compliance but cannot guarantee it. The violations already happened despite an explicit instruction.",
+      "C": "PostToolUse runs after the tool has executed, so the money has already gone out. A reversal ticket is damage control, not prevention.",
+      "D": "This guarantees compliance but gives up first-contact resolution for the large majority of small refunds. It over-corrects."
+    },
+    "whenRight": "D would be right if the business decided that every refund, at any amount, needs human approval. A is the right tool for soft preferences such as tone, where occasional deviation is acceptable.",
+    "trap": "\"You need a guarantee\": a business rule with financial impact needs deterministic enforcement before the call, not after it.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/hooks",
+      "https://code.claude.com/docs/en/agent-sdk/permissions"
+    ]
+  },
+  {
+    "id": "A-S1-02",
+    "scenario": "S1",
+    "domain": 1,
+    "task": "1.5",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 2,
+    "stem": "You are going through the support agent's requirements and deciding which ones to implement as Agent SDK hooks rather than as system-prompt instructions. Which TWO requirements should be implemented as hooks? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "When a customer is clearly frustrated, the agent acknowledges the frustration before explaining the next step."
+      },
+      {
+        "key": "B",
+        "text": "lookup_order (third-party MCP) returns Unix timestamps and numeric status codes; the agent must always see ISO 8601 dates and status names."
+      },
+      {
+        "key": "C",
+        "text": "The agent offers to resolve straightforward issues itself before suggesting escalation to a human, unless the customer insists on talking to one."
+      },
+      {
+        "key": "D",
+        "text": "Replies stay concise and avoid internal jargon such as warehouse codes and SKU prefixes."
+      },
+      {
+        "key": "E",
+        "text": "process_refund must never run for an account that get_customer has not returned as verified earlier in the same session."
+      }
+    ],
+    "answer": [
+      "B",
+      "E"
+    ],
+    "explanation": "Hooks are for guarantees. A PostToolUse hook can rewrite every lookup_order result into one consistent format before the model reads it, including results from a server you don't control. A PreToolUse hook can block process_refund until a verified customer ID exists, which is a prerequisite gate. The other three requirements call for judgment or style, where prompt instructions and examples are the right lever.",
+    "why": {
+      "A": "Whether and how to acknowledge frustration is a judgment call made while writing the reply. A hook on tool calls cannot express it.",
+      "C": "Escalation calibration depends on the case. It belongs in explicit prompt criteria with few-shot examples.",
+      "D": "This is style guidance for the model's own text. Enforcing it in a hook would mean rewriting model output, which is the wrong layer."
+    },
+    "whenRight": "If D were a hard compliance rule (for example, internal codes must legally never reach customers), a deterministic output filter in code would be justified.",
+    "trap": "\"must always\" and \"must never\" signal deterministic requirements. Requirements phrased as preferences (\"offers\", \"stays concise\") stay in the prompt.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/hooks"
+    ]
+  },
+  {
+    "id": "A-S1-03",
+    "scenario": "S1",
+    "domain": 2,
+    "task": "2.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A customer asks for a refund on an order delivered 75 days ago, and the policy allows 60 days. process_refund returns {\"isError\": true, \"content\": \"Operation failed\"} for every kind of failure. Logs show the agent retries the call three or four times, then tells the customer \"our system is having trouble, please try again later\". The customer returns the next day and the same thing happens. What change best fixes this?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Add a system-prompt instruction telling the agent to stop after two failed process_refund attempts and escalate the case to a human."
+      },
+      {
+        "key": "B",
+        "text": "Have process_refund return isError: false with an empty result for policy refusals, so the agent stops treating them as failures to retry."
+      },
+      {
+        "key": "C",
+        "text": "Add retry logic with exponential backoff inside the MCP server so that failures are absorbed before they ever reach the agent."
+      },
+      {
+        "key": "D",
+        "text": "Return structured error metadata: errorCategory \"business\", isRetryable: false, and a customer-facing note explaining the 60-day window."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "The agent cannot tell a policy refusal from an outage because every failure looks the same. Structured metadata tells it that retrying is pointless and gives it wording to explain the policy, so the conversation ends with a clear answer. isError is the MCP field that marks a tool execution failure. Category and retryability are conventions you put in the error content.",
+    "why": {
+      "A": "A retry cap limits the loop, but the agent still doesn't know why the refund failed. It escalates a case that the policy already answers, which hurts first-contact resolution.",
+      "B": "Reporting a refusal as an empty success hides it. The agent has nothing to explain to the customer and may assume the refund went through.",
+      "C": "Backoff helps genuine transient failures, but a policy violation never succeeds on retry. It only adds delay."
+    },
+    "whenRight": "C would be right if the logs showed timeouts or rate limits from the payment gateway, which are transient errors that a retry can fix.",
+    "trap": "\"for every kind of failure\": a uniform error message prevents the agent from choosing the right recovery.",
+    "verified": [
+      "https://modelcontextprotocol.io/specification/2025-06-18/server/tools"
+    ]
+  },
+  {
+    "id": "A-S1-04",
+    "scenario": "S1",
+    "domain": 1,
+    "task": "1.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your team hand-wrote the agentic loop for the support agent on the Messages API. In testing, the agent calls get_customer, then calls get_customer again with the same arguments, and keeps repeating until the 15-iteration cap ends the conversation. The logs show that every call executes and returns the correct customer record. What is the most likely cause?",
+    "options": [
+      {
+        "key": "A",
+        "text": "The loop runs the tool but doesn't append the tool_use turn and its matching tool_result to the messages for the next request."
+      },
+      {
+        "key": "B",
+        "text": "The iteration cap is too low for multi-step support cases. Raising it to 30 would give the model room to move on to lookup_order."
+      },
+      {
+        "key": "C",
+        "text": "get_customer's description is too vague, so the model cannot tell whether the call succeeded and calls it again to confirm."
+      },
+      {
+        "key": "D",
+        "text": "The loop should stop as soon as a response contains assistant text, because the model is probably writing its answer next to the call."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "A model that repeats the same call with the same arguments, even though the tool worked, has not seen the result. Each iteration must add the assistant's tool_use content and a user message with the matching tool_result to the history. Only then can the model reason about the next action. The loop should continue on stop_reason \"tool_use\" and end on \"end_turn\".",
+    "why": {
+      "B": "A higher cap just produces more identical repeats. Using an iteration cap as the main stopping mechanism is an anti-pattern in any case.",
+      "C": "Descriptions affect which tool the model picks, not whether it remembers a result. Identical repeated calls are the classic sign of missing history.",
+      "D": "Checking for assistant text is a known anti-pattern, because text and tool_use blocks can appear in the same response. It would also end the loop without fixing anything."
+    },
+    "whenRight": "C would be the likely cause if the agent kept choosing get_customer where lookup_order fits, which is a tool selection problem rather than identical repeats.",
+    "trap": "\"returns the correct customer record\": the tool works, so the result is getting lost between iterations.",
+    "verified": [
+      "https://platform.claude.com/docs/en/api/handling-stop-reasons",
+      "https://code.claude.com/docs/en/agent-sdk/agent-loop"
+    ]
+  },
+  {
+    "id": "A-S1-05",
+    "scenario": "S1",
+    "domain": 1,
+    "task": "1.7",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "Support conversations run in Agent SDK sessions. A customer who opened a billing dispute yesterday comes back today. Yesterday's session holds many get_customer and lookup_order results, but overnight the order's status changed from \"in transit\" to \"returned to sender\" and a partial credit was applied to the account. What is the most reliable way to continue the case?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Resume yesterday's session by ID so the agent keeps the full history, and let it pick up the changes the next time it calls lookup_order."
+      },
+      {
+        "key": "B",
+        "text": "Resume yesterday's session with fork_session enabled, so that today's conversation cannot overwrite the original record of yesterday's results."
+      },
+      {
+        "key": "C",
+        "text": "Start a new session seeded with a structured summary of yesterday's case facts, then have the agent re-fetch current order and account data."
+      },
+      {
+        "key": "D",
+        "text": "Start a new session with no prior context and let the agent re-investigate from scratch, so nothing stale can influence its answers."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "When the earlier tool results are stale, a fresh session seeded with a structured summary is more reliable than resuming. The summary carries what still matters (amounts, order IDs, what was promised) without old results that now look authoritative, and the agent then fetches the current state. Resuming is the better choice when most of the earlier context is still valid.",
+    "why": {
+      "A": "The stale results stay in context and look like facts. The agent may quote \"in transit\" or the old balance before it ever calls lookup_order again.",
+      "B": "Forking protects the original history, but the new branch starts with the same stale results, so the core problem remains.",
+      "D": "Dropping all context loses yesterday's findings and commitments and makes the customer repeat everything, which works against first-contact resolution."
+    },
+    "whenRight": "Resuming (A) would be fine if nothing had changed overnight. It would also work if the resumed session were explicitly told which records changed, so the agent re-checks only those.",
+    "trap": "\"overnight the order's status changed\": the prior tool results are stale, so don't resume them as if they were current.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/sessions"
+    ]
+  },
+  {
+    "id": "A-S1-06",
+    "scenario": "S1",
+    "domain": 5,
+    "task": "5.2",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 2,
+    "stem": "You are writing explicit escalation criteria, with few-shot examples, for the support agent's system prompt. In which TWO situations should the agent call escalate_to_human? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "The customer writes \"I don't want a bot, get me a person\" about a $15 late-delivery credit that the policy clearly allows."
+      },
+      {
+        "key": "B",
+        "text": "The customer is angry and writes in capitals about a damaged blender. They attached a photo, and the policy covers replacement with photo evidence."
+      },
+      {
+        "key": "C",
+        "text": "get_customer returns three accounts that match the customer's name and city, and the customer has not given any other identifier yet."
+      },
+      {
+        "key": "D",
+        "text": "The customer wants a refund for an annual renewal charged while the fraud team had suspended the account. The policy covers neither case."
+      },
+      {
+        "key": "E",
+        "text": "One message contains three separate issues: a missing item, a wrong delivery address, and a question about loyalty points."
+      }
+    ],
+    "answer": [
+      "A",
+      "D"
+    ],
+    "explanation": "An explicit request for a human is honored immediately, even when the issue would be easy to solve. A request that the policy does not address (a policy gap) needs human judgment, because the agent must not invent policy. Frustration, ambiguous matches and multi-issue messages are things the agent can handle itself.",
+    "why": {
+      "B": "Frustration alone is not a trigger. The agent should acknowledge it and offer the replacement it can make, and escalate only if the customer then repeats that they want a person.",
+      "C": "Multiple matches call for asking for another identifier (email, phone, order number), not for escalation and not for picking one heuristically.",
+      "E": "Several issues make the case more complex, but complexity is not an escalation trigger. The agent should split the message into separate items and resolve each one."
+    },
+    "whenRight": "B would become an escalation if, after the agent offered the replacement, the customer said again that they want a human.",
+    "trap": "\"explicitly asks for a person\" vs \"angry\": an explicit request triggers escalation, sentiment does not.",
+    "verified": [
+      "https://www.anthropic.com/engineering/building-effective-agents"
+    ]
+  },
+  {
+    "id": "A-S1-07",
+    "scenario": "S1",
+    "domain": 5,
+    "task": "5.5",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "A human QA team currently checks every refund the agent issues on its own. A dashboard shows the agent's refund decisions are 97% correct overall, and leadership wants to stop QA review entirely. Most cases are simple damage replacements, and billing-dispute refunds are about 8% of volume. What should you do before reducing human review?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Stop reviewing every case where the agent rates its own confidence 9 or 10 out of 10, since those cases make up most of the volume."
+      },
+      {
+        "key": "B",
+        "text": "Measure accuracy separately by case type, and keep a stratified random sample of autonomous decisions under ongoing review."
+      },
+      {
+        "key": "C",
+        "text": "Raise the overall accuracy target to 99% using more few-shot examples, then remove QA review once the overall figure reaches it."
+      },
+      {
+        "key": "D",
+        "text": "Keep reviewing 100% of refunds permanently, because any autonomous refund error is a financial loss the business cannot accept."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "An aggregate score can hide a weak segment. With billing disputes at 8% of volume, the agent could be wrong on a large share of them and still show 97% overall. Checking accuracy per case type shows where autonomy is safe. Ongoing stratified sampling keeps measuring error rates and catches new failure patterns after review is reduced.",
+    "why": {
+      "A": "Self-reported confidence is not calibrated. Confidence scores need checking against a labeled validation set before they can route review.",
+      "C": "A higher aggregate target has the same blind spot. 99% overall can still mask a poorly handled segment.",
+      "D": "Reviewing everything forever wastes reviewer capacity. Measured, segment-level evidence plus sampling gives assurance at much lower cost."
+    },
+    "whenRight": "D would be required if a regulation mandated human approval of every refund. Confidence-based routing (A's idea) becomes valid once scores are calibrated against labeled data.",
+    "trap": "\"97% correct overall\": an aggregate metric can mask poor performance on one segment.",
+    "verified": [
+      "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests"
+    ]
+  },
+  {
+    "id": "A-S1-08",
+    "scenario": "S1",
+    "domain": 1,
+    "task": "1.4",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "When the agent calls escalate_to_human, the human team receives a ticket with only the customer's email address and the text \"Customer needs help with refund\". Human agents cannot see the AI conversation transcript, and they spend about six minutes per ticket re-asking questions the AI already answered. What is the most effective change?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Give human agents read access to the full AI transcript and tool logs, so they can scroll back through the history themselves."
+      },
+      {
+        "key": "B",
+        "text": "Instruct the agent to write a friendly, detailed paragraph in the ticket that retells the conversation in the order it happened."
+      },
+      {
+        "key": "C",
+        "text": "Have the agent ask the customer to repeat the key details to the human agent, so that nothing important gets lost."
+      },
+      {
+        "key": "D",
+        "text": "Make escalate_to_human require a structured handoff: customer ID, root cause, amounts, actions taken and recommended next step."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "A structured handoff gives the human exactly what they need to act at once: who the customer is, what was found, what was already done and what the agent recommends. Making the fields part of the tool's input schema means every escalation includes them. A human picking up a case mid-process should not have to rebuild it.",
+    "why": {
+      "A": "Even with access, reading a long transcript full of raw tool output is slow, and it still contains no root-cause analysis or recommendation.",
+      "B": "Free prose varies from ticket to ticket and buries key facts in the middle. A chronological retelling also lacks a clear root cause and recommended action.",
+      "C": "This pushes the work back onto the customer, which is exactly the frustration the handoff is supposed to avoid."
+    },
+    "whenRight": "A is a useful supplement for audits or disputed cases, but it does not replace a structured summary.",
+    "trap": "\"cannot see the AI conversation transcript\": the handoff itself must carry the case.",
+    "verified": [
+      "https://platform.claude.com/docs/en/agents-and-tools/tool-use/implement-tool-use"
+    ]
+  },
+  {
+    "id": "A-S3-01",
+    "scenario": "S3",
+    "domain": 1,
+    "task": "1.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "You configure the coordinator with AgentDefinitions for four subagents (web-search, doc-analysis, synthesis, report) and set its allowedTools to [\"WebSearch\", \"Read\", \"Grep\"]. In test runs the coordinator never delegates. It does all the searching and reading itself, its context fills up, and the reports are shallow. The subagent descriptions are clear and specific. What is the most likely fix?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Rewrite each subagent's description with more trigger keywords so the coordinator recognizes when a task matches a subagent."
+      },
+      {
+        "key": "B",
+        "text": "Remove WebSearch, Read and Grep from the coordinator so that it has no option other than delegating every piece of work."
+      },
+      {
+        "key": "C",
+        "text": "Add \"Task\" to the coordinator's allowedTools, because subagents are spawned through the Task tool and it is missing."
+      },
+      {
+        "key": "D",
+        "text": "Copy the four subagents' system prompts into the coordinator's system prompt so it understands what each one can do."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "Subagents are spawned through the Task tool, and the exam's rule is that a coordinator's allowedTools must include \"Task\" before it can invoke them. Without it, the coordinator falls back on the tools it does have. Current Agent SDK docs call this the Agent tool (older versions and the init tool list use \"Task\").",
+    "why": {
+      "A": "The descriptions are already clear. Without the Task tool, better descriptions cannot help the coordinator delegate.",
+      "B": "Taking away its direct tools does not give the coordinator a way to spawn subagents. It would just be unable to do the work at all.",
+      "D": "This bloats the coordinator's prompt and blurs the roles. It still does not give the coordinator the ability to delegate."
+    },
+    "whenRight": "Once Task is allowed, trimming the coordinator's direct tools (B) is a sensible way to keep it in a coordinating role. A matters if the coordinator delegates but picks the wrong subagent.",
+    "trap": "\"never delegates\" while \"the descriptions are clear\": look for a missing capability, not a wording problem.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/subagents",
+      "https://code.claude.com/docs/en/agent-sdk/permissions"
+    ]
+  },
+  {
+    "id": "A-S3-02",
+    "scenario": "S3",
+    "domain": 1,
+    "task": "1.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "For a broad topic, the coordinator decides to research four independent subtopics. Traces show it emits one Task call, waits for the result, then emits the next, so a run takes roughly the sum of all four subagents' times. The subtopics do not depend on each other's findings. How should you change the coordinator?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Instruct the coordinator to emit all four Task calls in one response when subtopics are independent, so they run in parallel."
+      },
+      {
+        "key": "B",
+        "text": "Merge the four subtopics into a single Task call to one web-search subagent that covers all of them within its own context."
+      },
+      {
+        "key": "C",
+        "text": "Run four separate coordinator instances, one per subtopic, and merge their final reports together in application code."
+      },
+      {
+        "key": "D",
+        "text": "Keep delegating one at a time, but pass each subagent the previous subagent's findings so later searches avoid duplicate work."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "When the coordinator emits several Task tool calls in the same response, the subagents run concurrently, and the wall-clock time approaches that of the slowest one. Calls spread across separate turns run one after another. The coordinator keeps its role of aggregating and checking the results.",
+    "why": {
+      "B": "Packing everything into one subagent's context gives up both isolation and parallelism, and broad coverage tends to get shallow.",
+      "C": "Four coordinators means nobody sees the whole picture to check for gaps or reconcile conflicts, and the merge logic moves into brittle application code.",
+      "D": "Chaining findings helps when tasks depend on each other. These subtopics are independent, so this keeps the sequential latency for no benefit."
+    },
+    "whenRight": "D would be right if later subtopics really depended on earlier findings, for example analyzing sources that the first search discovers.",
+    "trap": "\"do not depend on each other's findings\": independent work should be spawned in parallel from a single response.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/subagents",
+      "https://www.anthropic.com/engineering/multi-agent-research-system"
+    ]
+  },
+  {
+    "id": "A-S3-03",
+    "scenario": "S3",
+    "domain": 1,
+    "task": "1.3",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 2,
+    "stem": "Report sections from the synthesis subagent contain claims with no citations, and some mix up which statistic came from which source, even though the search and analysis subagents recorded URLs and page numbers. The coordinator invokes synthesis with the prompt \"Synthesize the research findings gathered so far into a report section.\" Which TWO changes fix this? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Rely on the synthesis subagent reading the coordinator's conversation history, and make sure all prior results are in that history first."
+      },
+      {
+        "key": "B",
+        "text": "Give the synthesis subagent the web search tool so it can find a supporting source for any claim that is missing one."
+      },
+      {
+        "key": "C",
+        "text": "Include the complete findings from the search and analysis subagents directly in the synthesis subagent's Task prompt."
+      },
+      {
+        "key": "D",
+        "text": "Ask the search and analysis subagents for shorter prose summaries so that more of them fit into the synthesis prompt."
+      },
+      {
+        "key": "E",
+        "text": "Pass findings in a structured format that keeps each claim separate from its metadata, such as source URL, document name and page."
+      }
+    ],
+    "answer": [
+      "C",
+      "E"
+    ],
+    "explanation": "Subagents start with fresh context. The Task prompt is the only thing passed from coordinator to subagent, so a prompt that refers to findings \"gathered so far\" gives synthesis nothing to work with. Passing the complete findings fixes the missing content. Structuring them so each claim carries its source metadata preserves attribution through synthesis.",
+    "why": {
+      "A": "Subagents do not inherit the parent's conversation history or tool results. Only the Task prompt reaches them.",
+      "B": "Searching for citations after the fact puts search tools outside the synthesis role, and it can attach a different source than the one the claim actually came from.",
+      "D": "Prose summaries compress away the claim-to-source mapping, which makes the attribution problem worse."
+    },
+    "whenRight": "A narrowly scoped verify_fact tool for synthesis (a limited version of B) is right when simple fact checks are frequent, not as a way to rebuild lost citations.",
+    "trap": "\"the research findings gathered so far\": the prompt refers to content the subagent never received.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/subagents"
+    ]
+  },
+  {
+    "id": "A-S3-04",
+    "scenario": "S3",
+    "domain": 1,
+    "task": "1.7",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "The coordinator has spent 40 minutes building a shared analysis of 30 sources on battery-recycling regulation. Stakeholders now want to compare two alternative report drafts: one organized by region and one organized by regulatory mechanism. Both must start from exactly the same analysis, and neither should influence the other. How should you run this?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Continue in the current session: ask for the regional draft first, then ask for the mechanism-based draft in the following turn."
+      },
+      {
+        "key": "B",
+        "text": "Start two new sessions that each re-run the full research with the same prompt, so that both drafts have identical inputs."
+      },
+      {
+        "key": "C",
+        "text": "Write the analysis to a scratchpad file, then start two new sessions that each read the file before writing their draft."
+      },
+      {
+        "key": "D",
+        "text": "Resume the analysis session twice with fork_session enabled, giving each fork one draft structure to write."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "Forking creates a new session that starts with a copy of the original history and then diverges, while the original stays unchanged. Two forks therefore share the full analysis baseline, including its tool results and reasoning, and cannot see each other's drafts. This is the use case fork_session (forkSession in TypeScript, --fork-session in the CLI) is designed for.",
+    "why": {
+      "A": "The second draft is written with the first draft already in context, so the two are not independent.",
+      "B": "Re-running costs another 40 minutes per draft, and two runs can reach different analyses, so the baseline would not be identical.",
+      "C": "This works, but a file summary is lossy compared with the full session context. It is extra effort when a fork carries everything over directly."
+    },
+    "whenRight": "C would be the better choice if the session's tool results were stale or the work had to move to another host where the session file is not available.",
+    "trap": "\"exactly the same analysis\" and \"neither should influence the other\": independent branches from a shared baseline.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/sessions",
+      "https://code.claude.com/docs/en/cli-reference"
+    ]
+  },
+  {
+    "id": "A-S3-05",
+    "scenario": "S3",
+    "domain": 1,
+    "task": "1.6",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "Your system sends every request through the same fixed pipeline: five web searches, then document analysis, then synthesis, then the report. This works well for \"summarize recent news about X\" requests. For open-ended questions such as \"why did heat-pump adoption stall in some EU countries but not in others?\", the reports are generic, because the most useful leads only appear after the first findings come in. What should you change for open-ended questions?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Extend the fixed pipeline to fifteen web searches and two document-analysis passes so it collects more material before synthesis."
+      },
+      {
+        "key": "B",
+        "text": "Use dynamic decomposition: the coordinator drafts a plan, reviews intermediate findings and creates new subtasks for leads it discovers."
+      },
+      {
+        "key": "C",
+        "text": "Add a prompt-chaining step that writes a complete list of every subquestion up front, then run each one through the pipeline."
+      },
+      {
+        "key": "D",
+        "text": "Split every open-ended question into the same four standard angles (economic, political, technical, social) and run the pipeline per angle."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "Open-ended investigation needs a plan that adapts to what is found, generating subtasks from intermediate results. Fixed pipelines (prompt chaining) suit predictable, multi-aspect tasks such as the news summaries, and that path can stay as it is. The deciding detail is that the useful leads cannot be known before the first findings arrive.",
+    "why": {
+      "A": "More volume through a fixed pipeline still never follows the leads it uncovers. It adds cost and noise.",
+      "C": "A longer upfront list is still static. It cannot anticipate leads that only show up in the findings.",
+      "D": "Standard angles are another predetermined split. They can miss question-specific causes such as subsidy design or installer shortages."
+    },
+    "whenRight": "C (or the existing fixed pipeline) is right when the subquestions really can be known in advance, as with the predictable news-summary requests.",
+    "trap": "\"leads only appear after the first findings come in\": decompose adaptively, not up front.",
+    "verified": [
+      "https://www.anthropic.com/engineering/building-effective-agents",
+      "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/chain-prompts"
+    ]
+  },
+  {
+    "id": "A-S3-06",
+    "scenario": "S3",
+    "domain": 2,
+    "task": "2.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "The web-search subagent uses a custom MCP tool, search_archive. On any failure, the tool returns isError: true with the text \"Search failed\". The subagent behaves inconsistently: sometimes it retries an invalid query (for example a malformed date filter) five times, and sometimes it gives up on a brief rate limit that would have cleared within seconds. What should you change in the tool?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Return isError: false with an empty result list on any failure, so the subagent moves on to other sources instead of retrying."
+      },
+      {
+        "key": "B",
+        "text": "Raise a JSON-RPC protocol error for every failure instead of setting isError, so that the client handles all failures the same way."
+      },
+      {
+        "key": "C",
+        "text": "Keep isError: true and add structured metadata: errorCategory (transient, validation, permission), isRetryable and a description."
+      },
+      {
+        "key": "D",
+        "text": "Leave the tool unchanged and add a system-prompt rule telling the subagent to retry any failed search exactly twice, then move on."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "The subagent cannot tell a validation error, which never succeeds on retry, from a transient rate limit, which usually does. Error metadata that states the category and whether a retry makes sense lets it fix the query in one case and wait and retry in the other. isError stays as the MCP-standard signal that the tool execution failed.",
+    "why": {
+      "A": "Turning failures into empty successes hides them. The coordinator can no longer tell \"no matches\" from \"the search never ran\".",
+      "B": "Protocol errors are for problems such as unknown tools. Tool execution failures belong in the result with isError, where the model can see them, and this change adds no information anyway.",
+      "D": "One fixed rule is wrong for both cases: two retries of a malformed query waste calls, and a rate limit may need a short wait rather than an immediate retry."
+    },
+    "whenRight": "A retry budget like D's is a reasonable safety cap once errors already carry their category and retryability.",
+    "trap": "\"retries an invalid query ... gives up on a brief rate limit\": the agent needs to know which errors are retryable.",
+    "verified": [
+      "https://modelcontextprotocol.io/specification/2025-06-18/server/tools"
+    ]
+  },
+  {
+    "id": "A-S3-07",
+    "scenario": "S3",
+    "domain": 5,
+    "task": "5.4",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "Research runs take up to two hours and involve the coordinator plus several subagents. When the host process crashed 90 minutes into a run, everything had to start over, because the subagents' findings existed only in the coordinator's context. How should you design for crash recovery?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Have each agent export its state to a known location, keep a manifest of completed work, and load it into prompts on restart."
+      },
+      {
+        "key": "B",
+        "text": "After a crash, resume the coordinator's session by ID and rely on its transcript to bring back everything the subagents had found."
+      },
+      {
+        "key": "C",
+        "text": "Run two complete copies of every research job in parallel on separate hosts, so that at least one of them is likely to finish."
+      },
+      {
+        "key": "D",
+        "text": "Cap every research run at 30 minutes and split topics more aggressively, so that a crash loses at most half an hour of work."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "Durable, structured state per agent, plus a manifest showing what has finished, lets the coordinator restart, skip completed work and give the relevant findings to the agents it re-spawns. Recovery then no longer depends on what happened to be in one context window when the process died.",
+    "why": {
+      "B": "The transcript only holds what reached the coordinator before the crash. In-flight subagent work is lost, the context was already close to full, and nothing records which tasks actually finished.",
+      "C": "Doubling every run doubles cost and still makes no progress durable. Both copies can fail the same way.",
+      "D": "Shorter runs reduce what is lost but recover nothing, and they limit how deep the research can go."
+    },
+    "whenRight": "B is fine for a short single-agent session that was interrupted, where the transcript holds everything needed to continue.",
+    "trap": "\"findings existed only in the coordinator's context\": persist state outside the context window.",
+    "verified": [
+      "https://www.anthropic.com/engineering/multi-agent-research-system",
+      "https://code.claude.com/docs/en/agent-sdk/sessions"
+    ]
+  },
+  {
+    "id": "A-S3-08",
+    "scenario": "S3",
+    "domain": 5,
+    "task": "5.6",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 2,
+    "stem": "Reviewers find two problems in final reports: claims whose sources cannot be traced, and false \"contradictions\", such as a 2019 survey's 31% adoption figure presented as conflicting with a 2024 survey's 58%. Which TWO changes to the subagents' outputs address these problems? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Require subagents to output structured claim-source mappings (claim, source URL or document, relevant excerpt) that synthesis must keep."
+      },
+      {
+        "key": "B",
+        "text": "Instruct the synthesis subagent to resolve conflicting figures by keeping the value from the most authoritative source only."
+      },
+      {
+        "key": "C",
+        "text": "Require subagents to record the publication or data-collection date alongside every figure they extract from a source."
+      },
+      {
+        "key": "D",
+        "text": "Have the report subagent add citations at the end by searching for a source that supports each claim in the finished draft."
+      },
+      {
+        "key": "E",
+        "text": "Convert all findings into one uniform bullet format before synthesis, so that figures from different sources are easier to compare."
+      }
+    ],
+    "answer": [
+      "A",
+      "C"
+    ],
+    "explanation": "Attribution survives only if every claim travels with its source through each step, and synthesis must merge those mappings rather than rewrite them away. Dates let synthesis read 31% to 58% as change over time rather than as a contradiction. Real conflicts for the same period should be annotated with both sources, not settled by picking one.",
+    "why": {
+      "B": "Choosing one value arbitrarily discards credible data, and here the \"conflict\" is a difference over time, so there is nothing to resolve.",
+      "D": "Adding citations after the fact finds sources that agree with a claim, not the source it came from, which risks misattribution.",
+      "E": "Flattening everything into one format strips dates and methodological context, and it does nothing to restore lost attribution."
+    },
+    "whenRight": "If both figures covered the same year with a comparable method, neither A nor C resolves the conflict on its own. Annotate it with both sources and let the coordinator decide how to reconcile it.",
+    "trap": "\"2019 ... 2024\": a difference over time misread as a contradiction.",
+    "verified": [
+      "https://www.anthropic.com/engineering/multi-agent-research-system"
+    ]
+  }
+]

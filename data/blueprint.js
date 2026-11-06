@@ -1,0 +1,118 @@
+// Exam blueprint for Claude Certified Architect – Foundations (CCAR-F), official exam guide v1.0 (July 2026).
+// Task statement titles follow the official guide; docs are official Anthropic / MCP pages.
+window.CCA = window.CCA || {};
+
+CCA.exam = {
+  code: "CCAR-F",
+  name: "Claude Certified Architect – Foundations",
+  items: 60,
+  minutes: 120,
+  passScaled: 720,
+  scenariosPerExam: 4,
+  contentChangeDate: "2026-12-07",
+  newGuideDate: "2026-11-17",
+};
+
+CCA.domains = [
+  { id: 1, name: "Agentic Architecture & Orchestration", short: "Agents", weight: 27 },
+  { id: 2, name: "Tool Design & MCP Integration", short: "Tools & MCP", weight: 18 },
+  { id: 3, name: "Claude Code Configuration & Workflows", short: "Claude Code", weight: 20 },
+  { id: 4, name: "Prompt Engineering & Structured Output", short: "Prompts & Output", weight: 20 },
+  { id: 5, name: "Context Management & Reliability", short: "Context & Reliability", weight: 15 },
+];
+
+CCA.scenarios = [
+  { id: "S1", name: "Customer Support Resolution Agent", official: true, domains: [1, 2, 5],
+    blurb: "Agent SDK support agent with MCP tools get_customer, lookup_order, process_refund, escalate_to_human. Target: 80%+ first-contact resolution while escalating correctly." },
+  { id: "S2", name: "Code Generation with Claude Code", official: true, domains: [3, 5],
+    blurb: "Team uses Claude Code for generation, refactoring, debugging and docs: slash commands, CLAUDE.md, plan mode vs direct execution." },
+  { id: "S3", name: "Multi-Agent Research System", official: true, domains: [1, 2, 5],
+    blurb: "Coordinator delegates to web-search, document-analysis, synthesis and report subagents; output is a cited report." },
+  { id: "S4", name: "Developer Productivity with Claude", official: true, domains: [2, 3, 1],
+    blurb: "Agent SDK tool that helps engineers explore unfamiliar/legacy codebases, generate boilerplate and automate chores with Read, Write, Bash, Grep, Glob and MCP servers." },
+  { id: "S5", name: "Claude Code for Continuous Integration", official: true, domains: [3, 4],
+    blurb: "Claude Code in CI/CD: automated reviews, test generation, PR feedback. Prompts must be actionable and minimize false positives." },
+  { id: "S6", name: "Structured Data Extraction", official: true, domains: [4, 5],
+    blurb: "Extract data from unstructured documents, validate with JSON schemas, keep accuracy high, handle edge cases, feed downstream systems." },
+  { id: "CAI", name: "Conversational AI Architecture Patterns", official: false, domains: [5, 1, 2],
+    blurb: "Community-reported scenario (not in the official v1.0 guide): multi-turn assistants, instruction persistence, memory, safe tool execution." },
+];
+
+(function () {
+const D = {
+  toolUse: ["Tool use overview", "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview"],
+  implTool: ["Implement tool use (tool_choice, descriptions)", "https://platform.claude.com/docs/en/agents-and-tools/tool-use/implement-tool-use"],
+  stop: ["Handling stop reasons", "https://platform.claude.com/docs/en/api/handling-stop-reasons"],
+  sdk: ["Agent SDK overview", "https://platform.claude.com/docs/en/agent-sdk/overview"],
+  loop: ["Agent SDK: the agent loop", "https://platform.claude.com/docs/en/agent-sdk/agent-loop"],
+  sdkHooks: ["Agent SDK: hooks", "https://platform.claude.com/docs/en/agent-sdk/hooks"],
+  sdkSub: ["Agent SDK: subagents", "https://platform.claude.com/docs/en/agent-sdk/subagents"],
+  sdkSess: ["Agent SDK: sessions (resume, fork)", "https://platform.claude.com/docs/en/agent-sdk/sessions"],
+  sdkPerm: ["Agent SDK: permissions / allowed tools", "https://platform.claude.com/docs/en/agent-sdk/permissions"],
+  sdkMcp: ["Agent SDK: MCP", "https://platform.claude.com/docs/en/agent-sdk/mcp"],
+  batch: ["Message Batches (batch processing)", "https://platform.claude.com/docs/en/build-with-claude/batch-processing"],
+  structured: ["Structured outputs", "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"],
+  ctx: ["Context windows", "https://platform.claude.com/docs/en/build-with-claude/context-windows"],
+  caching: ["Prompt caching", "https://platform.claude.com/docs/en/build-with-claude/prompt-caching"],
+  pe: ["Prompting best practices", "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"],
+  clear: ["Be clear and direct", "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/be-clear-and-direct"],
+  fewshot: ["Multishot (few-shot) prompting", "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/multishot-prompting"],
+  chain: ["Chain complex prompts", "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/chain-prompts"],
+  halluc: ["Reduce hallucinations", "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations"],
+  evals: ["Define success & develop tests", "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests"],
+  ccMemory: ["Claude Code: memory & CLAUDE.md", "https://code.claude.com/docs/en/memory"],
+  ccSkills: ["Claude Code: skills", "https://code.claude.com/docs/en/skills"],
+  ccSlash: ["Claude Code: slash commands", "https://code.claude.com/docs/en/slash-commands"],
+  ccHooks: ["Claude Code: hooks reference", "https://code.claude.com/docs/en/hooks"],
+  ccSub: ["Claude Code: subagents", "https://code.claude.com/docs/en/sub-agents"],
+  ccMcp: ["Claude Code: MCP", "https://code.claude.com/docs/en/mcp"],
+  ccHeadless: ["Claude Code: headless / -p", "https://code.claude.com/docs/en/headless"],
+  ccGha: ["Claude Code: GitHub Actions", "https://code.claude.com/docs/en/github-actions"],
+  ccCli: ["Claude Code: CLI reference", "https://code.claude.com/docs/en/cli-reference"],
+  ccWorkflows: ["Claude Code: common workflows", "https://code.claude.com/docs/en/common-workflows"],
+  ccBest: ["Claude Code: best practices", "https://code.claude.com/docs/en/best-practices"],
+  ccTools: ["Claude Code: tools reference", "https://code.claude.com/docs/en/tools-reference"],
+  ccSettings: ["Claude Code: settings", "https://code.claude.com/docs/en/settings"],
+  mcpTools: ["MCP spec: tools (isError)", "https://modelcontextprotocol.io/specification/2025-06-18/server/tools"],
+  mcpServer: ["MCP: server concepts", "https://modelcontextprotocol.io/docs/learn/server-concepts"],
+  effAgents: ["Building effective agents (engineering blog)", "https://www.anthropic.com/engineering/building-effective-agents"],
+  writeTools: ["Writing tools for agents (engineering blog)", "https://www.anthropic.com/engineering/writing-tools-for-agents"],
+  ctxEng: ["Effective context engineering (engineering blog)", "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"],
+  research: ["How we built our multi-agent research system", "https://www.anthropic.com/engineering/multi-agent-research-system"],
+};
+
+const t = (id, title, docs) => ({ id, domain: Number(id[0]), title, docs: docs.map((k) => ({ title: D[k][0], url: D[k][1] })) });
+
+CCA.tasks = [
+  t("1.1", "Design and implement agentic loops for autonomous task execution", ["loop", "stop", "toolUse"]),
+  t("1.2", "Orchestrate multi-agent systems with coordinator-subagent patterns", ["sdkSub", "research", "effAgents"]),
+  t("1.3", "Configure subagent invocation, context passing, and spawning", ["sdkSub", "ccSub", "sdkSess"]),
+  t("1.4", "Implement multi-step workflows with enforcement and handoff patterns", ["sdkHooks", "sdkPerm", "effAgents"]),
+  t("1.5", "Apply Agent SDK hooks for tool call interception and data normalization", ["sdkHooks", "ccHooks"]),
+  t("1.6", "Design task decomposition strategies for complex workflows", ["effAgents", "chain", "research"]),
+  t("1.7", "Manage session state, resumption, and forking", ["sdkSess", "ccCli"]),
+  t("2.1", "Design effective tool interfaces with clear descriptions and boundaries", ["implTool", "writeTools"]),
+  t("2.2", "Implement structured error responses for MCP tools", ["mcpTools", "writeTools"]),
+  t("2.3", "Distribute tools appropriately across agents and configure tool choice", ["implTool", "sdkPerm", "ccSub"]),
+  t("2.4", "Integrate MCP servers into Claude Code and agent workflows", ["ccMcp", "sdkMcp", "mcpServer"]),
+  t("2.5", "Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob) effectively", ["ccTools", "ccBest"]),
+  t("3.1", "Configure CLAUDE.md files with appropriate hierarchy, scoping, and modular organization", ["ccMemory", "ccSettings"]),
+  t("3.2", "Create and configure custom slash commands and skills", ["ccSkills", "ccSlash"]),
+  t("3.3", "Apply path-specific rules for conditional convention loading", ["ccMemory"]),
+  t("3.4", "Determine when to use plan mode vs direct execution", ["ccWorkflows", "ccBest", "ccSub"]),
+  t("3.5", "Apply iterative refinement techniques for progressive improvement", ["ccBest", "pe"]),
+  t("3.6", "Integrate Claude Code into CI/CD pipelines", ["ccHeadless", "ccGha", "ccCli"]),
+  t("4.1", "Design prompts with explicit criteria to improve precision and reduce false positives", ["clear", "pe"]),
+  t("4.2", "Apply few-shot prompting to improve output consistency and quality", ["fewshot", "pe"]),
+  t("4.3", "Enforce structured output using tool use and JSON schemas", ["structured", "implTool"]),
+  t("4.4", "Implement validation, retry, and feedback loops for extraction quality", ["structured", "halluc", "chain"]),
+  t("4.5", "Design efficient batch processing strategies", ["batch"]),
+  t("4.6", "Design multi-instance and multi-pass review architectures", ["chain", "ccHeadless", "evals"]),
+  t("5.1", "Manage conversation context to preserve critical information across long interactions", ["ctx", "ctxEng"]),
+  t("5.2", "Design effective escalation and ambiguity resolution patterns", ["effAgents", "pe"]),
+  t("5.3", "Implement error propagation strategies across multi-agent systems", ["research", "mcpTools"]),
+  t("5.4", "Manage context effectively in large codebase exploration", ["ccSub", "ccBest", "ctxEng"]),
+  t("5.5", "Design human review workflows and confidence calibration", ["evals", "halluc"]),
+  t("5.6", "Preserve information provenance and handle uncertainty in multi-source synthesis", ["research", "halluc"]),
+];
+})();

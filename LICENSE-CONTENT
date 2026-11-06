@@ -1,0 +1,29 @@
+Study content: Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Copyright (c) 2026 Sercan (@sercanerhan)
+
+This license covers the study content written for this repository:
+  - notes/                 learn cards
+  - data/authored/         authored Architect (CCAR-F) questions
+  - data/enrichment/       tags and explanations written for imported questions
+  - data/dev/              Developer (CCDV-F) mock questions and explanations
+  - data/blueprint*.js, data/schedule.js (content parts) and the Markdown documentation
+
+You are free to share (copy and redistribute in any medium or format) and adapt
+(remix, transform and build upon) this material for any purpose, even commercially,
+as long as you give appropriate credit, provide a link to the license, and indicate
+if changes were made.
+
+Full legal code: https://creativecommons.org/licenses/by/4.0/legalcode
+Summary:         https://creativecommons.org/licenses/by/4.0/
+
+Suggested attribution:
+  "Claude certification study kit" by Sercan (@sercanerhan),
+  https://github.com/sercanerhan/claude-certification-study-kit, licensed under CC BY 4.0.
+
+Not covered by this license:
+  - Anthropic's official exam guides and their sample questions. They are not included
+    in this repository; tools/setup.py downloads them from Anthropic for your own use.
+  - The community study guide by Paul Larionov (github.com/paullarionov/claude-certified-architect).
+    It is not included either; tools/setup.py downloads it from GitHub for your own use.
+  - Names such as "Claude", "Anthropic" and the certification titles, which belong to Anthropic.

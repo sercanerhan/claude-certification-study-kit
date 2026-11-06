@@ -1,0 +1,1122 @@
+[
+  {
+    "id": "A-S2-01",
+    "scenario": "S2",
+    "domain": 3,
+    "task": "3.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your monorepo has packages/payments, packages/web and packages/infra. The root CLAUDE.md has grown to 600 lines because it holds money-handling rules, React conventions and Terraform rules side by side. The shared standards already exist as separate files in /standards. Each package's maintainers know exactly which standards apply to their package. Developers complain that Claude mixes conventions across packages. How should you restructure the configuration?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Keep the root CLAUDE.md and add a header per package telling Claude which section applies to which folder."
+      },
+      {
+        "key": "B",
+        "text": "Add a CLAUDE.md in each package that uses @import to pull in only the standards files its maintainers select."
+      },
+      {
+        "key": "C",
+        "text": "Have each developer copy the relevant standards into their ~/.claude/CLAUDE.md for the package they work on."
+      },
+      {
+        "key": "D",
+        "text": "Turn every standards file into a skill and ask developers to invoke the matching one at the start of a session."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "Package-level CLAUDE.md files with @import let each package compose exactly the standards its maintainers chose, so packages/payments loads money-handling rules and packages/web loads React conventions. The configuration stays modular and version-controlled, and nobody relies on Claude guessing which section applies.",
+    "why": {
+      "A": "Headers in one file still load everything everywhere. They rely on Claude inferring which section applies, which is exactly what is going wrong.",
+      "C": "User-level files are personal and not version-controlled. Teammates and new hires would not get the standards, and copies drift.",
+      "D": "Skills load on demand. Standards that must always apply when working in a package should load automatically, not depend on someone remembering to invoke them."
+    },
+    "whenRight": "If the conventions were tied to a file type spread across every package (for example all *.test.ts files), path-scoped rules in .claude/rules/ with a paths glob would be better than per-package imports.",
+    "trap": "'maintainers know exactly which standards apply': selective @import per package, not one big file or personal copies.",
+    "verified": [
+      "https://code.claude.com/docs/en/memory"
+    ]
+  },
+  {
+    "id": "A-S2-02",
+    "scenario": "S2",
+    "domain": 3,
+    "task": "3.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A developer says Claude Code follows the team's 'use pnpm, never npm' rule in most sessions. In sessions started from services/legacy-billing/, though, it keeps running npm install and following a different lint convention. Nobody on the team knows where the conflicting instructions come from. What should you do first?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Repeat the pnpm rule in the root CLAUDE.md in capital letters and mark it IMPORTANT so it wins any conflict."
+      },
+      {
+        "key": "B",
+        "text": "Add a PreToolUse hook that rewrites every npm command into the equivalent pnpm command before it runs."
+      },
+      {
+        "key": "C",
+        "text": "Run /memory in a session started from that folder to see which memory files load and spot the conflict."
+      },
+      {
+        "key": "D",
+        "text": "Clear the conversation and tell Claude to forget its earlier preferences before starting work in that folder."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "Behaviour differs by location, which points to a configuration-hierarchy issue, most likely a directory-level CLAUDE.md or an imported file in the legacy folder. /memory shows which memory files are in play, so you can find and fix the conflicting source instead of guessing.",
+    "why": {
+      "A": "Shouting in the root file doesn't remove the conflicting source. When two instructions contradict each other, Claude may still follow either one.",
+      "B": "A hook is an enforcement mechanism. It treats the symptom for npm only and leaves the unknown conflicting lint instructions in place.",
+      "D": "Memory files reload in every session, so clearing the conversation changes nothing about the configuration that causes the drift."
+    },
+    "whenRight": "If /memory shows the correct files are loaded and the rule is still occasionally broken in a way that causes real damage, a PreToolUse hook (B) becomes the right deterministic fix.",
+    "trap": "'first' and 'nobody knows where': diagnose the loaded memory files before adding enforcement or louder wording.",
+    "verified": [
+      "https://code.claude.com/docs/en/memory"
+    ]
+  },
+  {
+    "id": "A-S2-03",
+    "scenario": "S2",
+    "domain": 3,
+    "task": "3.2",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 2,
+    "stem": "You are slimming down a 450-line project CLAUDE.md. Which TWO of the following items should move out of CLAUDE.md into project skills in .claude/skills/? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "The rule that every exported function needs a JSDoc comment with @param and @returns."
+      },
+      {
+        "key": "B",
+        "text": "A 40-step release procedure that the team runs about twice a month."
+      },
+      {
+        "key": "C",
+        "text": "The instruction to use the shared logger module and never call console.log directly."
+      },
+      {
+        "key": "D",
+        "text": "A legacy-code archaeology workflow that produces long dependency reports on request."
+      },
+      {
+        "key": "E",
+        "text": "The project's build, lint and test commands that Claude needs in almost every task."
+      }
+    ],
+    "answer": [
+      "B",
+      "D"
+    ],
+    "explanation": "Skills are for on-demand, task-specific workflows. The release procedure and the archaeology workflow are only needed when someone runs them, so loading them into every session wastes context and can trigger them during unrelated work. The archaeology skill is also a good candidate for context: fork because its output is verbose.",
+    "why": {
+      "A": "A documentation rule applies to all code all the time. It is a universal standard that belongs in always-loaded CLAUDE.md.",
+      "C": "Logging conventions apply to all code Claude writes, so they must always be loaded.",
+      "E": "Build and test commands are needed in almost every session. Moving them to a skill would make Claude rediscover them repeatedly."
+    },
+    "whenRight": "If a 'universal' rule applied only to a file type spread across the repo (for example migration files), it would move to a path-scoped .claude/rules/ file rather than stay in CLAUDE.md or become a skill.",
+    "trap": "'skills = on demand, CLAUDE.md = always loaded': classify each item by how often it is needed.",
+    "verified": [
+      "https://code.claude.com/docs/en/skills"
+    ]
+  },
+  {
+    "id": "A-S2-04",
+    "scenario": "S2",
+    "domain": 3,
+    "task": "3.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your team created .claude/rules/terraform.md with 120 lines of Terraform conventions. The .tf files live in infra/ and also in a deploy/ folder inside each of 14 services. Token usage rose noticeably, and developers working on React code see Claude mention Terraform conventions. What change fixes this most directly?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Move the Terraform conventions into the root CLAUDE.md under a clearly labelled Terraform section."
+      },
+      {
+        "key": "B",
+        "text": "Copy terraform.md into a CLAUDE.md inside infra/ and inside each service's deploy/ folder."
+      },
+      {
+        "key": "C",
+        "text": "Convert terraform.md into a skill that developers invoke before touching infrastructure code."
+      },
+      {
+        "key": "D",
+        "text": "Add YAML frontmatter with paths: [\"**/*.tf\"] to that rule file so it loads only for .tf files."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "A rules file without paths frontmatter loads in every session, which explains the token cost and the irrelevant mentions. Adding a paths glob such as **/*.tf makes the rule load only when Claude works with Terraform files, wherever they live.",
+    "why": {
+      "A": "The root CLAUDE.md always loads too, so this keeps the same token cost and the same noise.",
+      "B": "Fifteen copies spread over many directories will drift apart. Directory-bound files are the wrong tool for a file type spread across the repo.",
+      "C": "A skill needs someone to invoke it, or Claude to choose to load it. Conventions should attach automatically whenever .tf files are edited."
+    },
+    "whenRight": "If all Terraform code lived in a single infra/ directory, a directory-level infra/CLAUDE.md (B, in one place) would be an acceptable alternative.",
+    "trap": "'.tf files ... in each of 14 services': a file type spread across directories calls for a paths glob.",
+    "verified": [
+      "https://code.claude.com/docs/en/memory"
+    ]
+  },
+  {
+    "id": "A-S2-05",
+    "scenario": "S2",
+    "domain": 3,
+    "task": "3.4",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "A production error report includes a stack trace: NullPointerException at InvoiceFormatter.formatName (InvoiceFormatter.java:142), raised when a customer has no middle name. The fix is a null check in that one method, plus a regression test. A teammate suggests you always start in plan mode to be safe. How should you approach this with Claude Code?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Use direct execution: share the stack trace and ask for the null check plus a regression test."
+      },
+      {
+        "key": "B",
+        "text": "Enter plan mode to explore the formatter package and agree on a design before allowing any edits."
+      },
+      {
+        "key": "C",
+        "text": "Launch an Explore subagent to map every use of middleName across the codebase before fixing it."
+      },
+      {
+        "key": "D",
+        "text": "Use plan mode and ask Claude for several alternative null-handling strategies for the whole codebase."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "This is a well-understood, single-file change with a clear stack trace, which is exactly where direct execution fits. Plan mode is valuable for multi-file, ambiguous or architectural work. Here it adds overhead without reducing any real risk.",
+    "why": {
+      "B": "Planning a one-method null check is ceremony. The scope and the fix are already clear from the stack trace.",
+      "C": "Mapping every use of the field widens a well-scoped bug fix into an investigation nobody asked for.",
+      "D": "Redesigning null handling across the codebase is scope creep. The report describes one failing method."
+    },
+    "whenRight": "If the investigation showed that null names are handled inconsistently across dozens of formatters and a shared design decision is needed, plan mode (B) would become the better choice.",
+    "trap": "'one method' plus 'clear stack trace': simple, well-scoped work means direct execution, whatever the teammate says.",
+    "verified": [
+      "https://code.claude.com/docs/en/common-workflows",
+      "https://code.claude.com/docs/en/best-practices"
+    ]
+  },
+  {
+    "id": "A-S2-06",
+    "scenario": "S2",
+    "domain": 3,
+    "task": "3.5",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "Claude Code generated a CSV import function for European partner files. Reviewing it, you find three problems: (1) dates are parsed as MM/DD instead of DD/MM, (2) duplicate detection keys on the raw date string, and (3) validation rejects any row whose parsed date lies in the future. Fixing the date format changes both the dedupe keys and which rows fail validation. How should you ask for the fixes?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Ask for the date-parsing fix first, then raise the dedupe and validation problems in later messages once you see the new behaviour."
+      },
+      {
+        "key": "B",
+        "text": "Ask Claude to rewrite the whole import function from scratch, using a longer and more precise prose specification."
+      },
+      {
+        "key": "C",
+        "text": "Open three separate sessions, one per problem, so each fix is made in isolation and reviewed on its own."
+      },
+      {
+        "key": "D",
+        "text": "Describe all three problems in one detailed message that explains how the date-format change affects dedupe and validation."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "The three problems interact: the date format feeds both the dedupe key and the future-date check. Sending them together, with the dependency spelled out, lets Claude design one consistent fix. Fixing them one at a time risks each change undoing or contradicting the others.",
+    "why": {
+      "A": "Sequential iteration suits independent problems. Here the first fix changes the inputs of the other two, so you would iterate repeatedly against moving targets.",
+      "B": "A full rewrite throws away working code, and longer prose is the kind of specification that is already being interpreted inconsistently.",
+      "C": "Isolated sessions can't see each other's changes, which guarantees conflicting fixes for coupled logic."
+    },
+    "whenRight": "If the problems were independent (a typo in a log message, a missing docstring, an unrelated off-by-one), fixing them one at a time (A) would be fine and easier to review.",
+    "trap": "'fixing the date format changes both...': interacting problems go in one message, independent problems go one at a time.",
+    "verified": [
+      "https://code.claude.com/docs/en/best-practices"
+    ]
+  },
+  {
+    "id": "A-S2-07",
+    "scenario": "S2",
+    "domain": 3,
+    "task": "3.5",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 2,
+    "stem": "You are using Claude Code to write a migration script that converts 2 million legacy customer records into a new schema. After three iterations it still crashes on records whose phone field is null, and nobody has checked whether it meets the 10-minute runtime budget. Which TWO techniques will most effectively drive the next iterations? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Write tests first for the transformations, null fields and runtime budget; share the failing output each iteration."
+      },
+      {
+        "key": "B",
+        "text": "Tell Claude in the next prompt to be much more careful with edge cases and to double-check all of its own work first."
+      },
+      {
+        "key": "C",
+        "text": "Give a concrete test case: an example record with phone: null and the exact output record you expect."
+      },
+      {
+        "key": "D",
+        "text": "Raise the response length limit so Claude has enough room to reason through every possible edge case in one go."
+      },
+      {
+        "key": "E",
+        "text": "Switch to plan mode for every remaining iteration so Claude cannot edit the script without approval."
+      }
+    ],
+    "answer": [
+      "A",
+      "C"
+    ],
+    "explanation": "Test-driven iteration gives Claude an objective target that includes edge cases and performance. A concrete input/expected-output pair for the null case removes ambiguity about the intended behaviour. Both turn a vague 'make it work' into failures Claude can act on.",
+    "why": {
+      "B": "'Be more careful' is a vague instruction. It gives Claude no new information about what correct output is.",
+      "D": "The problem is a missing specification of the expected behaviour, not a lack of output space.",
+      "E": "Plan mode controls when edits happen. It adds no information about the null case or the runtime budget."
+    },
+    "whenRight": "If the transformation rules themselves were still unclear (which legacy field maps where), the interview pattern, having Claude ask clarifying questions first, would come before writing tests.",
+    "trap": "'still crashes on null' plus 'nobody has checked runtime': give tests and concrete examples, not exhortations.",
+    "verified": [
+      "https://code.claude.com/docs/en/best-practices"
+    ]
+  },
+  {
+    "id": "A-S2-08",
+    "scenario": "S2",
+    "domain": 5,
+    "task": "5.4",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "In Claude Code you spent phase 1 of an investigation mapping how the legacy auth module issues and refreshes tokens. You found the key classes, the refresh call path and two undocumented side effects. In phase 2 you will spawn four subagents, one for each downstream integration that consumes these tokens. How should phase 2 be set up?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Spawn the four subagents with short task descriptions; they inherit the main conversation, so they will see the phase-1 findings."
+      },
+      {
+        "key": "B",
+        "text": "Paste the complete phase-1 transcript, including all tool output, into each subagent's prompt so nothing is lost."
+      },
+      {
+        "key": "C",
+        "text": "Summarise the phase-1 findings (classes, call path, side effects) and inject that summary into each subagent's prompt."
+      },
+      {
+        "key": "D",
+        "text": "Let each subagent re-explore the auth module from scratch so its conclusions are independent of phase 1."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "Subagents start with a fresh context and don't see the main conversation. A concise summary of the phase-1 findings gives each one the facts it needs while keeping its context small, so it can spend its budget on its own integration.",
+    "why": {
+      "A": "Subagents don't automatically inherit the parent conversation. They would start without the findings and probably reach different conclusions.",
+      "B": "Pasting the full verbose transcript recreates the context bloat that subagents are meant to avoid, and it buries the key facts.",
+      "D": "Re-exploring wastes work four times over and may miss the undocumented side effects that phase 1 already found."
+    },
+    "whenRight": "If the phase-1 findings were later invalidated by code changes, a fresh targeted re-exploration of the changed files (a narrower version of D) would be justified.",
+    "trap": "'spawn subagents for the next phase': summarise and inject. Never assume inherited context, and never paste the raw transcript.",
+    "verified": [
+      "https://code.claude.com/docs/en/sub-agents"
+    ]
+  },
+  {
+    "id": "A-S4-01",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.5",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "Your productivity agent must change only the third of four identical entries, { status: 'pending', retries: 3 }, in a generated fixtures file. The entries are byte-for-byte identical, including the surrounding lines. The Edit tool call fails because the anchor text matches more than one location. What should the agent do?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Retry the Edit with replace_all enabled so that the anchor text no longer has to be unique."
+      },
+      {
+        "key": "B",
+        "text": "Read the full file, change the third entry in the loaded content, and Write the whole file back."
+      },
+      {
+        "key": "C",
+        "text": "Use Bash to run sed -i with an expression that substitutes only the third occurrence of the pattern."
+      },
+      {
+        "key": "D",
+        "text": "Use Grep to find the line number of the third entry and pass that line number to Edit as its anchor."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "Edit needs anchor text that occurs exactly once. When no unique anchor exists, the reliable fallback is Read + Write: load the full content, make the targeted change, and write the complete file back. That is deterministic and easy to review.",
+    "why": {
+      "A": "replace_all would change all four entries, not only the third one.",
+      "C": "A sed one-liner is fragile, platform-dependent (GNU vs BSD flags) and skips the file tools' read-before-write safety checks.",
+      "D": "Edit matches on text, not line numbers, so a line number can't serve as its anchor."
+    },
+    "whenRight": "If all four entries should change, replace_all (A) is correct. If nearby text made one occurrence unique, an Edit with a longer anchor would be the simpler fix.",
+    "trap": "'byte-for-byte identical' plus 'only the third': non-unique anchor with a selective change means Read + Write.",
+    "verified": [
+      "https://code.claude.com/docs/en/tools-reference"
+    ]
+  },
+  {
+    "id": "A-S4-02",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.5",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "An engineer asks the agent to generate boilerplate tests for components that have none. Step 1: list every existing *.test.tsx file across 30 packages. Step 2: find which components still import the deprecated renderLegacy helper. Which tool choice is correct for each step?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Step 1: Glob with **/*.test.tsx. Step 2: Grep for the renderLegacy import in the source."
+      },
+      {
+        "key": "B",
+        "text": "Step 1: Grep for the text 'test.tsx'. Step 2: Glob with the pattern **/*renderLegacy*."
+      },
+      {
+        "key": "C",
+        "text": "Step 1: Glob with **/*.test.tsx. Step 2: Glob with the pattern **/*renderLegacy*."
+      },
+      {
+        "key": "D",
+        "text": "Step 1: Bash ls -R filtered by the model. Step 2: Read every component file in each package."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "Step 1 matches file names, which is Glob's job. Step 2 searches file contents for an import statement, which is Grep's job. Choosing by 'names or paths' versus 'contents' is the core built-in tool selection skill.",
+    "why": {
+      "B": "Both tools are swapped. Grep searches contents (most files never mention 'test.tsx'), and Glob can't see import statements inside files.",
+      "C": "Glob only matches paths. Components that import renderLegacy are not named after it.",
+      "D": "Listing manually and reading every file wastes context and time when purpose-built search tools exist."
+    },
+    "whenRight": "If step 2 were 'find the file that defines renderLegacy and it is named renderLegacy.ts', a Glob on the file name would be enough.",
+    "trap": "'list ... files' versus 'which ... import': names or paths mean Glob, contents mean Grep.",
+    "verified": [
+      "https://code.claude.com/docs/en/tools-reference"
+    ]
+  },
+  {
+    "id": "A-S4-03",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.5",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "An engineer asks the agent: 'How does a refund flow from the API to the database in this 2,000-file legacy service?' Right now the agent starts by reading every file under src/ in batches, hits context limits halfway, and gives vague answers. How should the agent approach this question?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Read all files under src/ in alphabetical batches and summarise each batch before moving to the next one."
+      },
+      {
+        "key": "B",
+        "text": "Glob for **/*refund* and Read every matching file in full before answering the question."
+      },
+      {
+        "key": "C",
+        "text": "Ask the engineer for an architecture diagram and a list of relevant files before investigating anything."
+      },
+      {
+        "key": "D",
+        "text": "Grep for the refund route or handler entry point, Read it, then follow its imports with targeted Reads."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "Build understanding incrementally: find the entry point with Grep, Read it, then follow imports and calls to trace the flow. This keeps the context focused on the path that matters instead of flooding it with unrelated files.",
+    "why": {
+      "A": "Reading everything upfront is exactly what exhausts the context. Batch summaries also lose the specific details the trace needs.",
+      "B": "File names don't reveal the flow. Helpers such as LedgerWriter or PaymentGateway won't match *refund*, while unrelated test fixtures will.",
+      "C": "The agent's job is to explore unfamiliar code. Pushing the investigation back to the engineer defeats the purpose."
+    },
+    "whenRight": "If the service were small enough that its relevant files fit comfortably in context, reading the handful of files directly would be acceptable.",
+    "trap": "'reading every file ... hits context limits': start with Grep for the entry point, then Read selectively.",
+    "verified": [
+      "https://code.claude.com/docs/en/tools-reference"
+    ]
+  },
+  {
+    "id": "A-S4-04",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.5",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 3,
+    "stem": "Before deleting legacyCharge(), the agent must find every call site. payments/index.ts re-exports it as charge, and billing/compat.ts wraps it in an exported chargeV1(). A Grep for 'legacyCharge' found only two callers, but integration tests suggest many more. Which TWO steps should the agent take? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Conclude that the two hits are complete, because Grep already searched every file in the repository."
+      },
+      {
+        "key": "B",
+        "text": "Glob for **/*charge* and treat every file whose name matches as a caller of the function."
+      },
+      {
+        "key": "C",
+        "text": "Identify every exported name that exposes the function, including re-export aliases and wrappers."
+      },
+      {
+        "key": "D",
+        "text": "Read every file that imports anything from payments/ before running any further searches."
+      },
+      {
+        "key": "E",
+        "text": "Grep for each of those exported names (charge, chargeV1 and so on) across the whole codebase."
+      }
+    ],
+    "answer": [
+      "C",
+      "E"
+    ],
+    "explanation": "Wrapper modules hide the original name. First list every exported name that leads to the function (aliases and wrappers), then Grep for each of those names. This finds callers that never mention legacyCharge.",
+    "why": {
+      "A": "Grep is exhaustive only for the pattern you give it. Callers that use the charge alias or chargeV1 never contain the string legacyCharge.",
+      "B": "File names say nothing about call sites. This produces both false positives and misses.",
+      "D": "Reading every importer upfront floods the context. Targeted Greps for the exported names are cheaper and complete."
+    },
+    "whenRight": "If the codebase had a code-intelligence MCP tool with reference tracking that resolves aliases, calling it would replace the manual alias-then-Grep loop.",
+    "trap": "'re-exports it as' and 'wraps it': trace exported names first, then search for each name.",
+    "verified": [
+      "https://code.claude.com/docs/en/tools-reference"
+    ]
+  },
+  {
+    "id": "A-S4-05",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.1",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "Your agent has the built-in tools plus a code-intel MCP server whose find_references tool does semantic, cross-repo reference search. You already rewrote find_references' description to explain when it beats text search. The agent still never calls it. The system prompt contains: 'When the user asks you to find or search for anything, use Grep.' What is the most effective fix?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Remove Grep from the agent's tool list so find_references becomes the only search option it has."
+      },
+      {
+        "key": "B",
+        "text": "Add several few-shot examples of find_references calls while keeping the existing system-prompt instruction."
+      },
+      {
+        "key": "C",
+        "text": "Rewrite that line so 'find'/'search' no longer maps to Grep, and state when each search tool fits."
+      },
+      {
+        "key": "D",
+        "text": "Rename find_references to find_search_grep_references so it matches the keywords in the instruction."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "A keyword-sensitive instruction in the system prompt is overriding a well-written tool description. The fix is to remove the unintended keyword-to-tool association and replace it with guidance that separates text search from semantic reference search.",
+    "why": {
+      "A": "Grep is still the right tool for log messages, config values and literal strings. Removing it trades one misrouting problem for another.",
+      "B": "Few-shot examples compete with a direct instruction that names Grep. The conflicting instruction stays in place, so behaviour stays inconsistent.",
+      "D": "Gaming the keyword with a confusing name blurs the boundary between the tools and leaves the root-cause instruction untouched."
+    },
+    "whenRight": "If the system prompt had no such instruction and the MCP description were still a one-liner, enriching the description would be the first fix.",
+    "trap": "'already rewrote the description' plus 'find or search ... use Grep': the system prompt is overriding the description.",
+    "verified": [
+      "https://platform.claude.com/docs/en/agents-and-tools/tool-use/implement-tool-use"
+    ]
+  },
+  {
+    "id": "A-S4-06",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "The internal code-index MCP server's search_callers tool returns [] both when a function has no callers and when the index backend times out. Last week the agent reported formatLegacyInvoice as dead code and removed it, which broke a nightly job. The logs show the index had timed out on that query. How should search_callers be changed?",
+    "options": [
+      {
+        "key": "A",
+        "text": "On timeout, return isError: true with errorCategory 'transient', isRetryable: true and a message; [] only on success."
+      },
+      {
+        "key": "B",
+        "text": "Keep the tool as is and add a system-prompt rule that every empty result must be double-checked with Grep before deleting code."
+      },
+      {
+        "key": "C",
+        "text": "Make the tool retry the backend three times internally and return [] if the backend is still timing out after that."
+      },
+      {
+        "key": "D",
+        "text": "On timeout, return the plain string 'Operation failed' so the agent knows that something went wrong with the call."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "An access failure must not look like a valid empty result. A structured MCP error (isError, a transient category, a retryable flag and a readable message) lets the agent retry or report uncertainty, and keeps [] meaning 'the query succeeded and found no callers'.",
+    "why": {
+      "B": "A prompt rule is probabilistic and adds a workaround at the wrong layer. The tool still lies about what happened.",
+      "C": "Local retries are fine, but returning [] after they fail still disguises the failure as 'no callers'.",
+      "D": "A generic message without a category or retryability leaves the agent unable to choose between retrying and giving up."
+    },
+    "whenRight": "If the failure were a validation error (a malformed symbol name), the structured error should say errorCategory 'validation' and isRetryable false, so the agent fixes its input instead of retrying.",
+    "trap": "'returns [] both when ... and when ... times out': separate access failures from valid empty results.",
+    "verified": [
+      "https://modelcontextprotocol.io/specification/2025-06-18/server/tools"
+    ]
+  },
+  {
+    "id": "A-S4-07",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your developer-productivity agent has 21 tools: six built-ins plus 15 tools from Jira, GitHub and an internal deploy MCP server. When engineers ask it to explain a legacy module, it sometimes opens Jira tickets or starts deploy dry-runs that nobody asked for. Which change best addresses the root cause?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Add a system-prompt rule saying the agent may only use Jira or deploy tools when the engineer explicitly asks for them."
+      },
+      {
+        "key": "B",
+        "text": "Create role-scoped subagents: an explorer with only Read, Grep and Glob, plus separate ticket and deploy agents."
+      },
+      {
+        "key": "C",
+        "text": "Set tool_choice to 'any' so that the model must always pick a tool deliberately instead of answering in free text."
+      },
+      {
+        "key": "D",
+        "text": "Merge the 15 MCP tools into one integrations tool with an action parameter so the tool list looks much shorter."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "Too many tools in one agent degrades selection, and tools outside the current role get misused. Scoping each subagent to the tools of its role, with explanation going to an agent that only has read and search tools, removes the opportunity for the wrong calls.",
+    "why": {
+      "A": "A prompt rule leaves all 21 tools in front of the model, so misrouting stays possible.",
+      "C": "tool_choice 'any' forces a tool call. It does nothing to narrow which tools are appropriate, and it makes stray calls more likely.",
+      "D": "Merging shortens the list but still gives the explanation flow a path to deploy actions. It hides the overlap instead of removing access."
+    },
+    "whenRight": "If the agent had only a few tools and the wrong calls came from vague descriptions, rewriting the descriptions would be the first fix.",
+    "trap": "'21 tools' plus 'explain a legacy module ... deploy dry-runs': scope tools to roles.",
+    "verified": [
+      "https://code.claude.com/docs/en/sub-agents"
+    ]
+  },
+  {
+    "id": "A-S4-08",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your boilerplate generator must call load_project_template first, because it returns the team's scaffold conventions for the target repo. Only then may it generate files. In about 15% of runs, Claude skips the call and writes files from generic patterns. The rest of the flow should remain model-driven. What is the most reliable fix?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Set tool_choice to 'any' on every request so the model is required to call a tool at each step of the flow."
+      },
+      {
+        "key": "B",
+        "text": "Add 'ALWAYS call load_project_template first' in capital letters at the top of the system prompt."
+      },
+      {
+        "key": "C",
+        "text": "Keep tool_choice 'auto' and add few-shot examples that show load_project_template being called first."
+      },
+      {
+        "key": "D",
+        "text": "Force tool_choice {type: 'tool', name: 'load_project_template'} on the first request, then use 'auto'."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "Forced tool selection guarantees that the first call is load_project_template. Switching back to 'auto' afterwards leaves the rest of the generation model-driven. The guarantee covers exactly the step that must happen, and nothing more.",
+    "why": {
+      "A": "'any' requires some tool but not this one. Applied to every turn, it also stops the model from ending with a text answer.",
+      "B": "A louder prompt instruction is still probabilistic. A 15% skip rate shows that prompt compliance is not enough here.",
+      "C": "Few-shot examples improve the odds but don't guarantee the first call."
+    },
+    "whenRight": "If the requirement were only that the model must use some tool rather than reply in text, tool_choice 'any' (A) on that turn would be the right setting.",
+    "trap": "'must call ... first' plus 'rest should remain model-driven': force the first call, then release to auto.",
+    "verified": [
+      "https://platform.claude.com/docs/en/agents-and-tools/tool-use/implement-tool-use"
+    ]
+  },
+  {
+    "id": "A-S4-09",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.3",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 3,
+    "stem": "You are splitting the productivity agent into a coordinator with an explorer subagent (answers questions about legacy code) and a generator subagent (writes boilerplate). The generator often needs a quick symbol check ('does OrderRepository.findByRef exist and what does it return?'). Deeper investigations are rare. Which TWO tool configurations should you choose? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Give the explorer subagent Read, Grep and Glob only, with no Write, Edit or Bash."
+      },
+      {
+        "key": "B",
+        "text": "Give every subagent all built-in tools and all MCP tools so no subagent is ever blocked by a missing capability."
+      },
+      {
+        "key": "C",
+        "text": "Give the explorer Bash as well, so it can run arbitrary shell commands and finish discovery faster."
+      },
+      {
+        "key": "D",
+        "text": "Give the generator a scoped lookup_symbol tool for quick checks; route deep investigations via the coordinator."
+      },
+      {
+        "key": "E",
+        "text": "Give the generator a generic http_fetch tool so it can download any template it finds on the internet."
+      }
+    ],
+    "answer": [
+      "A",
+      "D"
+    ],
+    "explanation": "Least privilege per role: the explorer only needs read and search tools. The generator's frequent need is met by a narrowly scoped cross-role tool, while rare deep investigations still go through the coordinator. Selection stays reliable and risky capabilities stay contained.",
+    "why": {
+      "B": "Over-provisioning every agent increases decision complexity and invites cross-role misuse.",
+      "C": "Arbitrary Bash gives a read-only role write and execute power it doesn't need.",
+      "E": "A generic fetch tool is the opposite of a constrained tool. It invites unvetted templates and misuse."
+    },
+    "whenRight": "If deep investigations became as frequent as quick checks, giving the generator more of the explorer's capabilities, or merging the roles, could become reasonable.",
+    "trap": "'quick symbol check' versus 'deeper investigations are rare': a scoped cross-role tool for the common case, the coordinator for the rest.",
+    "verified": [
+      "https://code.claude.com/docs/en/sub-agents"
+    ]
+  },
+  {
+    "id": "A-S4-10",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.4",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "The team added an internal repo-graph MCP server. Its query_dependencies tool returns transitive dependency graphs across all 40 company repositories. Its description reads only 'Queries dependencies.' When asked what would break if a shared library changes, the agent keeps using Grep on the local checkout and misses consumers in other repositories. What should you do?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Remove Grep from the agent so it has no choice but to use the repo-graph MCP tool for dependency questions."
+      },
+      {
+        "key": "B",
+        "text": "Move the repo-graph server from the project .mcp.json to user scope so that it gets loaded with higher priority."
+      },
+      {
+        "key": "C",
+        "text": "Expand the MCP tool description: cross-repo coverage, transitive results, output format, when to prefer it."
+      },
+      {
+        "key": "D",
+        "text": "Add a general system-prompt line telling the agent to prefer MCP tools over built-in tools whenever possible."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "The agent picks tools from their descriptions. A one-line MCP description can't compete with a familiar built-in such as Grep. Describing the tool's distinctive capabilities and outputs, and when it beats local text search, lets the agent choose it for cross-repo impact questions.",
+    "why": {
+      "A": "Grep remains the right tool for many local searches. Removing it breaks other tasks and leaves the poor description in place.",
+      "B": "Scope controls who gets the server, not how the agent ranks tools. All configured tools are available together either way.",
+      "D": "A blanket preference is vague and keyword-like. It may push the agent to MCP tools where Grep is actually better."
+    },
+    "whenRight": "If the description were already rich and the agent still ignored the tool, look for a conflicting system-prompt instruction or a broken MCP connection.",
+    "trap": "'description reads only' plus 'keeps using Grep': improve the MCP tool description.",
+    "verified": [
+      "https://code.claude.com/docs/en/mcp"
+    ]
+  },
+  {
+    "id": "A-S4-11",
+    "scenario": "S4",
+    "domain": 2,
+    "task": "2.4",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "In every session the agent makes 8–12 exploratory MCP calls before it can answer ownership questions. It lists services, fetches each service's metadata, and then opens OpenAPI specs to see which service owns an endpoint. The service catalog (names, owners, endpoints, spec locations) changes only weekly. How can you cut these exploratory calls?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Expose the service catalog as an MCP resource so the agent sees services and endpoints upfront."
+      },
+      {
+        "key": "B",
+        "text": "Add a paginated list_services tool that returns 50 services per page so each exploratory call is cheaper."
+      },
+      {
+        "key": "C",
+        "text": "Raise the agent's maximum number of turns so the exploration can always finish before it runs out of steps."
+      },
+      {
+        "key": "D",
+        "text": "Paste the full OpenAPI spec of every service into the system prompt so no MCP calls are needed at all."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "MCP resources are designed to expose content catalogs. They give the agent visibility into what data exists without exploratory tool calls. A slowly changing service catalog is a textbook fit.",
+    "why": {
+      "B": "Pagination makes each call smaller but keeps the same exploratory pattern, and may even add calls.",
+      "C": "More turns let the waste continue rather than removing it.",
+      "D": "Every full spec in the system prompt costs a large number of tokens in every session, including sessions that never ask about ownership."
+    },
+    "whenRight": "If the catalog changed constantly and the agent needed filtered, parameterised queries, a well-described search tool would complement or replace the static resource.",
+    "trap": "'exploratory calls' plus a stable 'catalog': expose it as an MCP resource.",
+    "verified": [
+      "https://code.claude.com/docs/en/common-workflows"
+    ]
+  },
+  {
+    "id": "A-S4-12",
+    "scenario": "S4",
+    "domain": 3,
+    "task": "3.2",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "Engineers use Claude Code weekly for a 'dependency bump' chore: a 25-step procedure that edits package.json, runs audits and opens a PR. Someone pasted the procedure into the project CLAUDE.md. Now every session pays for those tokens, and Claude sometimes starts bump steps during unrelated work. The procedure should still be shared with the team. Where should it live?",
+    "options": [
+      {
+        "key": "A",
+        "text": "In each engineer's ~/.claude/CLAUDE.md, so it stays out of the shared project context."
+      },
+      {
+        "key": "B",
+        "text": "In a project skill, .claude/skills/dep-bump/SKILL.md, that engineers invoke on demand."
+      },
+      {
+        "key": "C",
+        "text": "In .claude/rules/dep-bump.md with paths: [\"**/package.json\"] so it loads only for that file."
+      },
+      {
+        "key": "D",
+        "text": "In the project CLAUDE.md, under a header saying 'only follow when explicitly asked'."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "A task-specific workflow that runs on request belongs in a skill. A project skill is version-controlled, so the whole team shares it, and it loads only when invoked. That removes both the constant token cost and the accidental triggering.",
+    "why": {
+      "A": "User-level files are not shared and still load in every session, so it fails on both counts.",
+      "C": "A path rule loads whenever Claude touches any package.json, during ordinary edits too, so the accidental triggering continues.",
+      "D": "The text still loads in every session. A header asking Claude to ignore it is weaker than not loading it at all."
+    },
+    "whenRight": "If the content were a convention for how package.json files must always be formatted, a path-scoped rule (C) would be the right home.",
+    "trap": "'procedure' run on demand plus 'shared with the team': a project skill, not a path rule.",
+    "verified": [
+      "https://code.claude.com/docs/en/skills"
+    ]
+  },
+  {
+    "id": "A-S4-13",
+    "scenario": "S4",
+    "domain": 3,
+    "task": "3.4",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "An engineer asks Claude Code to add a new Invoice CRUD module that mirrors the existing Order module exactly: the same folder layout, controller, repository, DTOs and test structure. The Order pattern is well established, and there are no design decisions to make. What approach fits best?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Enter plan mode to compare alternative module structures before generating any Invoice files."
+      },
+      {
+        "key": "B",
+        "text": "Run the interview pattern first, so Claude can ask about caching, failure modes and API style."
+      },
+      {
+        "key": "C",
+        "text": "Use direct execution: point Claude at the Order module as the template and generate Invoice."
+      },
+      {
+        "key": "D",
+        "text": "Spawn an Explore subagent to survey every module in the codebase before deciding how to proceed."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "The scope is clear and the pattern is established, so direct execution with the Order module as a concrete template is the efficient choice. Plan mode, interviews and broad exploration pay off when there is ambiguity or an architectural choice. Here there is neither.",
+    "why": {
+      "A": "There are no alternative structures to compare. The requirement is to mirror Order exactly.",
+      "B": "The interview pattern helps in unfamiliar domains with open design questions, and none exist here.",
+      "D": "Surveying every module wastes context. The one template that matters is already named."
+    },
+    "whenRight": "If there were no existing pattern and the module could reasonably follow several architectures (for example event-sourced vs CRUD), plan mode (A) would be the right start.",
+    "trap": "'mirrors ... exactly' plus 'no design decisions': direct execution.",
+    "verified": [
+      "https://code.claude.com/docs/en/common-workflows",
+      "https://code.claude.com/docs/en/best-practices"
+    ]
+  },
+  {
+    "id": "A-S4-14",
+    "scenario": "S4",
+    "domain": 1,
+    "task": "1.6",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "An engineer asks the agent to 'add comprehensive tests to our legacy billing codebase': 300 modules, 4% coverage, little documentation and tangled dependencies. How should the agent decompose this task?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Process the modules alphabetically in a fixed pipeline: read the module, write its tests, run them, then move on."
+      },
+      {
+        "key": "B",
+        "text": "Start with the smallest modules to raise the coverage percentage quickly, then work up to larger ones."
+      },
+      {
+        "key": "C",
+        "text": "Map the structure, find high-impact areas, then follow a prioritised plan that adapts as dependencies appear."
+      },
+      {
+        "key": "D",
+        "text": "Spawn 300 parallel subagents, one per module, each told to write a complete test suite for its module."
+      }
+    ],
+    "answer": [
+      "C"
+    ],
+    "explanation": "Open-ended work on unknown code needs dynamic, adaptive decomposition. Map the structure, identify high-impact areas (critical paths, frequently changed code), and build a prioritised plan that is revised as dependencies are discovered.",
+    "why": {
+      "A": "A fixed pipeline suits predictable work. Alphabetical order ignores impact and breaks down when modules turn out to depend on each other.",
+      "B": "Optimising the coverage number favours trivial code over the risky paths that need tests most.",
+      "D": "Massive parallel spawning without a map creates duplicated mocks, inconsistent fixtures and unmanageable coordination."
+    },
+    "whenRight": "For a predictable multi-aspect task, such as reviewing each changed file of a PR for the same checklist, a fixed sequential pipeline (A) would be appropriate.",
+    "trap": "'comprehensive' plus 'legacy, tangled dependencies': adaptive decomposition, starting with mapping.",
+    "verified": [
+      "https://code.claude.com/docs/en/common-workflows",
+      "https://code.claude.com/docs/en/best-practices"
+    ]
+  },
+  {
+    "id": "A-S4-15",
+    "scenario": "S4",
+    "domain": 1,
+    "task": "1.3",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "The coordinator has already identified the refund entry point (api/refunds.ts), three key classes and a suspicious retry wrapper. It then uses the Task tool to spawn a 'trace-refund-flow' subagent with the prompt 'Trace the refund flow and report risks.' The subagent rediscovers everything from scratch and sometimes chooses a different entry point. What should you change?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Put the coordinator's findings (entry point, file paths, class names, retry wrapper) in the Task prompt."
+      },
+      {
+        "key": "B",
+        "text": "Enable the subagent's option to inherit the coordinator's full conversation history automatically when spawned."
+      },
+      {
+        "key": "C",
+        "text": "Write the findings into the project CLAUDE.md so that every future session and subagent loads them."
+      },
+      {
+        "key": "D",
+        "text": "Have the subagent resume the coordinator's session ID so it continues from where the coordinator left off."
+      }
+    ],
+    "answer": [
+      "A"
+    ],
+    "explanation": "Subagents start with isolated context and get only what the coordinator puts in the Task prompt. Passing the concrete findings anchors the subagent on the right entry point and saves the rediscovery work.",
+    "why": {
+      "B": "Subagents don't inherit the coordinator's history in this pattern, and there is no such inheritance switch. Context must be passed explicitly.",
+      "C": "CLAUDE.md is for durable standards. Putting per-task investigation notes there pollutes every future session.",
+      "D": "Resuming the coordinator's session would mean taking over the coordinator's whole bloated context, not delegating a focused task."
+    },
+    "whenRight": "If you deliberately wanted two branches to share the full analysis baseline and explore divergent approaches, a forked session (fork_session) would be the right tool.",
+    "trap": "'rediscovers everything': subagents need their context in the prompt.",
+    "verified": [
+      "https://code.claude.com/docs/en/sub-agents"
+    ]
+  },
+  {
+    "id": "A-S4-16",
+    "scenario": "S4",
+    "domain": 1,
+    "task": "1.5",
+    "type": "single",
+    "select": 1,
+    "difficulty": 2,
+    "stem": "Your chore-automation agent uses Bash for git housekeeping. Twice it ran git push --force on a shared release branch, although the system prompt says never to force-push. Engineers still need the agent for routine git commands. What is the most reliable fix?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Strengthen the system prompt with an explicit warning and two examples of correct, non-forced git push commands."
+      },
+      {
+        "key": "B",
+        "text": "Remove Bash from the agent entirely so that it can no longer run any git command on any branch."
+      },
+      {
+        "key": "C",
+        "text": "Review the Bash command audit logs weekly and revert any force-push you find on a shared release branch."
+      },
+      {
+        "key": "D",
+        "text": "Add a PreToolUse hook on Bash that denies force-push commands and returns a reason to the model."
+      }
+    ],
+    "answer": [
+      "D"
+    ],
+    "explanation": "A rule that must always hold needs deterministic enforcement. A PreToolUse hook that matches Bash, inspects the command and denies force pushes blocks the action every time, and its reason tells the model why so it can adapt. Routine git commands keep working.",
+    "why": {
+      "A": "Prompt guidance is probabilistic. It already failed twice, and more wording doesn't change that.",
+      "B": "Removing Bash breaks the routine chores the agent exists to do. It is an over-correction.",
+      "C": "After-the-fact review lets the damage happen first. It is detection, not prevention."
+    },
+    "whenRight": "If the agent had no legitimate need for any shell access, removing Bash (B) or never granting it would be the simpler least-privilege choice.",
+    "trap": "'although the system prompt says never': use hooks for guaranteed compliance, not stronger wording.",
+    "verified": [
+      "https://code.claude.com/docs/en/agent-sdk/hooks"
+    ]
+  },
+  {
+    "id": "A-S4-17",
+    "scenario": "S4",
+    "domain": 5,
+    "task": "5.4",
+    "type": "multi",
+    "select": 2,
+    "difficulty": 3,
+    "stem": "An engineer has used the agent for 90 minutes to explore a 1.2M-line legacy monolith. Answers are getting inconsistent. The agent now refers to 'typical service-layer patterns' instead of the specific LedgerService and PostingRules classes it found an hour ago. Which TWO changes best counter this? (Select TWO.)",
+    "options": [
+      {
+        "key": "A",
+        "text": "Increase max_tokens on each response so the agent has room to restate everything it has learned."
+      },
+      {
+        "key": "B",
+        "text": "Keep a scratchpad file of key findings (classes, paths, decisions) and consult it for later questions."
+      },
+      {
+        "key": "C",
+        "text": "Delegate specific questions (e.g. 'find all callers of LedgerService') to subagents; keep only their summaries."
+      },
+      {
+        "key": "D",
+        "text": "Restart the session and have the agent reread every relevant file at the start of each new question."
+      },
+      {
+        "key": "E",
+        "text": "Ask the agent to rate its confidence after each answer and to re-explore the codebase only when the rating is below 7."
+      }
+    ],
+    "answer": [
+      "B",
+      "C"
+    ],
+    "explanation": "Referring to generic patterns instead of specific classes is context degradation. A scratchpad file keeps key findings outside the fragile conversation context. Subagent delegation keeps verbose exploration output out of the main context, which can then focus on coordination.",
+    "why": {
+      "A": "Output length doesn't fix degraded input context. The agent has lost track of findings, not room to write.",
+      "D": "Rereading everything for each question is slow, and it refills the context with the same verbose material.",
+      "E": "Self-reported confidence is poorly calibrated, and the agent is already confidently generic."
+    },
+    "whenRight": "If the session were simply full of stale verbose output but the agent's answers were still accurate, running /compact to reduce context usage would be a lighter first step.",
+    "trap": "'typical patterns' instead of specific classes: context degradation, countered with a scratchpad and subagent delegation.",
+    "verified": [
+      "https://code.claude.com/docs/en/sub-agents"
+    ]
+  },
+  {
+    "id": "A-S4-18",
+    "scenario": "S4",
+    "domain": 5,
+    "task": "5.4",
+    "type": "single",
+    "select": 1,
+    "difficulty": 3,
+    "stem": "An overnight chore run has a coordinator that dispatches subagents to upgrade a logging library in 60 repositories. The process crashed after repository 38. When restarted, it redid all 60 repositories and opened duplicate PRs for the first 38. How should you design the run so it recovers correctly?",
+    "options": [
+      {
+        "key": "A",
+        "text": "Resume the crashed coordinator session with --resume so the conversation history shows which repos were done."
+      },
+      {
+        "key": "B",
+        "text": "Have each subagent export state to a known location; on resume the coordinator loads that manifest into prompts."
+      },
+      {
+        "key": "C",
+        "text": "Add a system-prompt instruction asking the coordinator to check GitHub for existing PRs before dispatching each repo."
+      },
+      {
+        "key": "D",
+        "text": "Run the 60 repositories in smaller nightly batches of 10 so that any single crash affects fewer repositories."
+      }
+    ],
+    "answer": [
+      "B"
+    ],
+    "explanation": "Structured state persistence makes recovery deterministic. Each agent writes its status to a known location, and on restart the coordinator loads the manifest and passes the completed and pending items into the prompts. It skips finished work instead of reconstructing it from memory.",
+    "why": {
+      "A": "A crashed session may not have recorded the last completed steps, and replaying a long, stale transcript is unreliable and expensive.",
+      "C": "A prompt instruction is probabilistic, and PR existence is an indirect, partial signal of progress (for example, a repo might be upgraded but its PR not yet opened).",
+      "D": "Smaller batches limit the blast radius but still redo completed work after any crash."
+    },
+    "whenRight": "If the run were short, interactive and its session intact, resuming the session (A) could be acceptable. A state manifest matters most for long unattended runs.",
+    "trap": "'crashed' plus 'redid all': use manifest-based crash recovery.",
+    "verified": [
+      "https://code.claude.com/docs/en/headless"
+    ]
+  }
+]

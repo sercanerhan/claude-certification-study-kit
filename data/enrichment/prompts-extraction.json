@@ -1,0 +1,395 @@
+{
+ "OFF-10": {
+  "domain": 3,
+  "task": "3.6",
+  "why": {
+   "B": "CLAUDE_HEADLESS is not a Claude Code environment variable. Non-interactive mode is selected by a flag, not by an env var.",
+   "C": "Closing stdin is a shell workaround. Without -p, Claude Code still starts an interactive session rather than printing a result and exiting, and -p itself reads piped stdin as input.",
+   "D": "There is no --batch flag. 'Batch' on the exam refers to the Message Batches API, an API-level feature unrelated to the CLI."
+  },
+  "whenRight": "No other option becomes right. In CI you would add flags to -p (for example --output-format json, --allowedTools, or --bare for reproducible runs), not replace it.",
+  "trap": "'waiting for interactive input': the documented fix is -p/--print. Distractors invent plausible-sounding flags and env vars."
+ },
+ "OFF-11": {
+  "domain": 4,
+  "task": "4.5",
+  "alsoTasks": [
+   "3.6"
+  ],
+  "why": {
+   "B": "Polling doesn't change the up-to-24-hour window with no SLA. Developers blocked on merge cannot wait on 'usually finishes within an hour'.",
+   "C": "Result ordering is solved by custom_id. Giving up 50% savings on the overnight report fixes a non-problem.",
+   "D": "A timeout fallback adds two code paths and can still pay for both calls. Matching each workload to the right API is simpler."
+  },
+  "whenRight": "If the pre-merge check were changed to a non-blocking advisory that posts comments later (developers can merge without it), batching it too (B) could be acceptable.",
+  "trap": "'blocking pre-merge check' versus 'overnight': split by latency tolerance, not by cost alone."
+ },
+ "OFF-12": {
+  "domain": 4,
+  "task": "4.6",
+  "alsoTasks": [
+   "1.6"
+  ],
+  "why": {
+   "B": "This pushes the burden onto developers and doesn't fix attention dilution for the PRs that legitimately span many files.",
+   "C": "Capacity isn't the problem. The 14 files already fit, and a bigger window doesn't spread attention evenly.",
+   "D": "Consensus voting suppresses real bugs that are found only intermittently, and it triples cost without fixing the inconsistency."
+  },
+  "whenRight": "If the inconsistency came from vague review criteria rather than PR size (for example, the same issue judged differently in small PRs too), explicit criteria and few-shot examples (4.1/4.2) would be the fix.",
+  "trap": "'14 files ... detailed for some, superficial for others ... contradictory': the signature of attention dilution."
+ },
+ "COM-16": {
+  "domain": 3,
+  "task": "3.6",
+  "alsoTasks": [
+   "4.3"
+  ],
+  "why": {
+   "A": "CLAUDE.md examples guide the format but do not enforce it, so a parser posting inline comments will still break on occasional free-form output.",
+   "C": "A text template is still prompt-only. One missing bracket breaks parsing, and nothing validates the output against a schema.",
+   "D": "This adds a second model call and a second place to fail instead of producing structured output at the source."
+  },
+  "whenRight": "If findings were read only by humans and never parsed automatically, documenting the format in CLAUDE.md (A) would be adequate and simpler.",
+  "trap": "'automatically post each finding ... requires structured data': machine-parsed output calls for --output-format json with --json-schema. The docs put the result in the structured_output field."
+ },
+ "COM-17": {
+  "domain": 4,
+  "task": "4.6",
+  "alsoTasks": [
+   "3.6"
+  ],
+  "why": {
+   "B": "Extended thinking deepens deliberation within the same reasoning context. The guide says it is less effective than an independent instance.",
+   "C": "Self-review instructions run inside the context that already justified the approach, so the model tends to confirm it.",
+   "D": "More context helps generation quality but doesn't remove the self-review blind spot the stem describes ('considered these cases but concluded...')."
+  },
+  "whenRight": "If the misses came from missing information (for example, Claude never saw the tests that encode the edge case), adding the tests and docs to context (D) would be the right fix.",
+  "trap": "'reasoning ... shows it considered these cases but concluded its approach was correct': confirmation bias, which needs an independent reviewer."
+ },
+ "COM-18": {
+  "domain": 4,
+  "task": "4.5",
+  "why": {
+   "A": "Batches have custom_id for exactly this correlation, so the option is factually wrong.",
+   "C": "Tool definitions are allowed in batch requests (the docs list tool use as batchable). The problem is executing the tool mid-request.",
+   "D": "Latency is a real concern for PR feedback, but the question asks for the technical limitation. The workflow would not 'otherwise function' because the tool loop breaks."
+  },
+  "whenRight": "If the review were redesigned to include all related files up front (single-turn) and ran as a non-blocking nightly job, latency (D) would become the only consideration, and an acceptable one.",
+  "trap": "'primary technical limitation' plus an iterative tool loop: there is no multi-turn tool calling inside one batch request."
+ },
+ "COM-19": {
+  "domain": 4,
+  "task": "4.5",
+  "why": {
+   "A": "Batching the blocking style check leaves developers waiting for up to 24 hours with no SLA.",
+   "C": "Prompt caching cuts repeated-prefix cost but forgoes the 50% batch discount on two workloads that can tolerate delay.",
+   "D": "Nightly test generation is latency-tolerant, so keeping it synchronous wastes the savings for no benefit."
+  },
+  "whenRight": "If nightly test generation needed an iterative tool loop (running tests mid-generation), it would have to stay synchronous, making D right.",
+  "trap": "'block merging until completion' identifies the only synchronous workload. Scheduled jobs go to batch."
+ },
+ "COM-20": {
+  "domain": 4,
+  "task": "4.2",
+  "why": {
+   "A": "The stem says detailed instructions were already tried and stayed inconsistent. More rules repeat the failed approach.",
+   "B": "The findings already identify real issues, so the gap is format consistency, not missing information.",
+   "C": "A second pass adds cost and latency and doesn't specify what a 'concrete' fix looks like."
+  },
+  "whenRight": "If findings lacked fixes because Claude couldn't see the code it would need to change (for example, the called function is in another file), adding context (B) would help.",
+  "trap": "'When you add detailed instructions ... still inconsistent': once instructions have failed, few-shot examples are next."
+ },
+ "COM-21": {
+  "domain": 4,
+  "task": "4.5",
+  "why": {
+   "A": "This is backwards. The pre-merge hook is the blocking workload that cannot tolerate up to 24 hours.",
+   "C": "Batching the blocking hook breaks the merge flow for developers.",
+   "D": "The overnight deep analysis is an ideal batch candidate. Keeping it real-time wastes 50%."
+  },
+  "whenRight": "If the deep analysis required multi-turn tool calls within a single request (for example, fetching files on demand), neither mode could be batched as designed (D) until it was restructured.",
+  "trap": "'already runs overnight ... polls': the stem describes a workload that already looks like a batch job."
+ },
+ "COM-22": {
+  "domain": 4,
+  "task": "4.1",
+  "why": {
+   "A": "Comment age is a weak proxy. Old comments are often accurate and new ones can be wrong, so this doesn't define what counts as a problem.",
+   "B": "Examples help, but without a clear criterion they teach 'look like these', and the root cause, a vague instruction, remains.",
+   "C": "Filtering patterns hides some false positives but does nothing for the missed contradicting comments."
+  },
+  "whenRight": "If explicit criteria were already in place and Claude still misjudged new variants, adding few-shot examples (B) would be the next step.",
+  "trap": "'check that comments are accurate': the guide's own example of a vague instruction to replace with an explicit criterion."
+ },
+ "COM-23": {
+  "domain": 4,
+  "task": "4.1",
+  "why": {
+   "B": "Developers who already dismiss findings unread won't use confidence scores, and uncalibrated scores don't restore trust.",
+   "C": "Weeks of noisy output while the prompts improve keeps eroding trust. Improvement should happen with the noisy categories switched off.",
+   "D": "A uniform reduction also cuts recall in the high-precision categories (security, correctness) that are currently trusted."
+  },
+  "whenRight": "If false positives were spread evenly across categories (no single category noisy), explicit criteria and severity definitions for all of them would replace disabling.",
+  "trap": "'High-false-positive categories erode trust in accurate categories': disable the noisy ones temporarily while you fix them.",
+  "note": "The stem opens with inconsistent severity ratings, which the guide fixes with explicit severity criteria and code examples per level (4.1). No option offers that, so A is the best of the given choices. If an option with explicit severity definitions appeared, it would target the severity symptom more directly."
+ },
+ "COM-24": {
+  "domain": 3,
+  "task": "3.6",
+  "alsoTasks": [
+   "5.1"
+  ],
+  "why": {
+   "B": "Fewer suggestions don't stop duplicates. Claude still can't see what is already covered.",
+   "C": "Focusing on edge cases may still duplicate existing edge-case tests and drops valuable happy-path gaps.",
+   "D": "Keyword matching on test names is brittle. Different wording for the same scenario slips through, and similar names hide different scenarios."
+  },
+  "whenRight": "If the existing test suite were too large to fit in context, a summary of covered scenarios, or the tests for just the touched module, would replace including the whole file.",
+  "trap": "'duplicate scenarios already covered': the model lacks the information, so provide the existing tests."
+ },
+ "COM-25": {
+  "domain": 3,
+  "task": "3.6",
+  "why": {
+   "A": "Skipping intermediate commits delays feedback and doesn't stop duplicates on the final run.",
+   "B": "Text matching misses reworded duplicates and wrongly removes a still-open issue that matches an old one.",
+   "C": "Restricting scope misses issues in earlier files that interact with the new changes, which reduces thoroughness."
+  },
+  "whenRight": "If prior findings were too long to include, a compact structured list of open findings (ID, file, line, issue) would serve the same role as D.",
+  "trap": "'duplicate previous comments on code that was already fixed': give prior findings as context and ask for new or still-unaddressed issues only."
+ },
+ "COM-28": {
+  "domain": 4,
+  "task": "4.6",
+  "alsoTasks": [
+   "4.2"
+  ],
+  "why": {
+   "B": "Automatic suppression is filtering before developers see findings, which stakeholders rejected.",
+   "C": "Categorizing changes how findings are processed but not how long each one takes to evaluate, and developers still click in for the rationale.",
+   "D": "This filters findings before developers see them, violating the stated constraint."
+  },
+  "whenRight": "If stakeholders allowed filtering, routing low-confidence findings to a separate triage queue calibrated on labeled dismissals would cut volume as well.",
+  "trap": "'stakeholders rejected any approach that filters findings': put the decision information inline, don't remove findings."
+ },
+ "COM-29": {
+  "domain": 4,
+  "task": "4.1",
+  "why": {
+   "B": "Confidence scores don't address categories that are noisy by design, and distrustful developers ignore them.",
+   "C": "Keeping the 52% and 48% FP categories live during weeks of tuning continues the trust erosion.",
+   "D": "A uniform reduction lowers recall in the 8% FP security/correctness category that developers already trust."
+  },
+  "whenRight": "Once prompts for style and documentation are improved (explicit criteria plus examples) and their measured false-positive rate is acceptable, re-enabling them is the planned next step.",
+  "trap": "The per-category FP numbers (8% vs 52%) point to category-specific action, not a global change."
+ },
+ "COM-61": {
+  "domain": 1,
+  "task": "1.4",
+  "alsoTasks": [
+   "2.1"
+  ],
+  "why": {
+   "A": "A 60-second timing heuristic proves a preview happened but not that the user saw and confirmed it, and it breaks for slow users.",
+   "B": "An approval prompt enforces consent but not that the user approved after seeing the preview's impact, so the preview step can still be skipped.",
+   "C": "Instructions and examples are probabilistic. The stem already shows the agent bypassing a prompt-level convention."
+  },
+  "whenRight": "If the requirement were only 'a human approves every removal' (no preview needed), an orchestration-level approval gate (B), such as a hook or permission prompt, would be sufficient.",
+  "trap": "'ensure every removal is preceded by a preview that the user explicitly confirms': a code-level binding between preview and execute.",
+  "note": "Community-reported scenario. The closest official task is 1.4 (programmatic prerequisites over prompt guidance). A and B are also code-level, but only D structurally binds execution to that specific preview."
+ },
+ "COM-62": {
+  "domain": 2,
+  "task": "2.2",
+  "alsoTasks": [
+   "5.3"
+  ],
+  "why": {
+   "A": "This leaves the classification to the model when the tool already knows the error type deterministically.",
+   "B": "Uniform backoff wastes time and tokens retrying syntax errors that can never succeed.",
+   "D": "Structured metadata (isRetryable, errorCategory) is the guide's pattern, but here it still leaves the transient retries to the agent loop. Local recovery inside the tool is cheaper."
+  },
+  "whenRight": "If retry decisions depended on context only the agent has (for example, the user is waiting and would rather try another source), returning structured errors with a retryable flag (D) would be better.",
+  "trap": "'8% ... succeed when retried, 4% ... never succeed': handle transient errors locally and return non-retryable ones immediately with details.",
+  "note": "Community-reported scenario. Guide 2.2/5.3 support both structured error metadata and local recovery of transient failures. C combines the two, so it is the stronger answer. D is not wrong in principle."
+ },
+ "COM-63": {
+  "domain": 5,
+  "task": "5.2",
+  "why": {
+   "B": "This dodges the decision and gives contradictory guidance on a high-stakes topic.",
+   "C": "Recency is a heuristic. The user may hold both views, and the guide prefers asking over heuristic selection.",
+   "D": "This silently chooses a compromise the user never asked for and hides the conflict."
+  },
+  "whenRight": "If the earlier statement had been explicitly retracted ('forget what I said about low risk'), proceeding with the latest preference (C) would be correct.",
+  "trap": "'directly contradictory preferences': ask to clarify rather than pick by heuristic.",
+  "note": "Community-reported scenario. The closest official task is 5.2 (ask for clarification instead of using heuristics). Also note the guide's general caution that personalized investment advice is out of scope for many deployments."
+ },
+ "COM-64": {
+  "domain": 5,
+  "task": "5.1",
+  "why": {
+   "A": "The Messages API has no vector-database dependency for memory. Conversation memory is whatever you send in messages.",
+   "B": "Two turns cannot exceed a context window.",
+   "C": "There is no session_id parameter in the Messages API. State lives entirely in the request."
+  },
+  "whenRight": "If the conversation were thousands of turns long and earlier turns were deliberately truncated, context management (B-adjacent) would be the cause.",
+  "trap": "'Two messages after': too short for context limits, so history isn't being sent."
+ },
+ "COM-65": {
+  "domain": 5,
+  "task": "5.1",
+  "why": {
+   "A": "Summarizing everything risks turning exact quantities and allergies into vague prose, which is the progressive summarization risk.",
+   "B": "Truncation can silently drop the allergy statement from early in the session.",
+   "D": "Retrieval infrastructure is overkill for one session and can miss a fact that isn't semantically similar to the current question."
+  },
+  "whenRight": "For history spanning months of sessions where specific past exchanges must be recalled on demand, external storage with retrieval (D) becomes appropriate.",
+  "trap": "'allergies, recipe scaling': critical facts go into a persistent structured block outside the summarized history."
+ },
+ "COM-66": {
+  "domain": 5,
+  "task": "5.1",
+  "why": {
+   "B": "Similarity search may not retrieve preferences that aren't similar to the current message, and it adds infrastructure.",
+   "C": "A bigger window postpones the same loss and raises cost on every turn.",
+   "D": "Re-summarizing every turn compounds summarization errors and adds a call per turn."
+  },
+  "whenRight": "If the lost information were specific transactional facts (amounts, IDs), extracting them into a persistent case-facts block would be the stronger addition to A.",
+  "trap": "'keeps only the last 25 message pairs': truncation loses early preferences, so compress the old messages and keep the recent ones verbatim."
+ },
+ "COM-67": {
+  "domain": 5,
+  "task": "5.1",
+  "why": {
+   "B": "Response length doesn't inherently grow with turn count. Input size does.",
+   "C": "Nothing in the stem points to a database. The API itself grows with history.",
+   "D": "The model keeps no internal profile between calls. It is stateless."
+  },
+  "whenRight": "If an app-side history store were doing unindexed full scans per turn, database latency (C) could contribute, but it wouldn't explain rising API cost.",
+  "trap": "'latency increases and costs rise': both scale with input tokens, which grow as full history is resent."
+ },
+ "COM-68": {
+  "domain": 5,
+  "task": "5.1",
+  "alsoTasks": [
+   "5.4"
+  ],
+  "why": {
+   "A": "A rolling window throws away the months-old discussion the user is asking about.",
+   "B": "Summaries compress conclusions into generic statements, which is the symptom already seen.",
+   "D": "Tagging conclusions helps structure but doesn't solve finding the right exchange in 85K tokens of history."
+  },
+  "whenRight": "If conclusions were captured as they were reached into a persistent structured notes file (a scratchpad-style memory), that store would be simpler than embeddings retrieval.",
+  "trap": "'three months ... specific prior discussions': you need targeted recall of specific exchanges.",
+  "note": "Community-reported scenario. The guide doesn't cover embedding retrieval. Its closest patterns are persistent structured facts (5.1) and scratchpad files (5.4). Treat C as the community's answer, not an official one."
+ },
+ "COM-69": {
+  "domain": 5,
+  "task": "5.1",
+  "why": {
+   "A": "The system prompt is the right home for standing guidelines. Moving them into a user message lowers their authority.",
+   "B": "A reset destroys the context the user built up, which is a heavy cost for a drift problem.",
+   "D": "Regeneration is corrective, adds latency and cost, and still needs a reliable compliance check."
+  },
+  "whenRight": "If a few rules were safety-critical, a post-response validation gate (D) would be justified in addition to reminders.",
+  "trap": "'within token limits': drift isn't a capacity issue, so refresh the guidelines periodically.",
+  "note": "Current prompting docs recommend injecting reminders into the user turn for very long conversations (instead of assistant prefill), which agrees with C."
+ },
+ "COM-70": {
+  "domain": 4,
+  "task": "4.2",
+  "alsoTasks": [
+   "5.1"
+  ],
+  "why": {
+   "A": "Reminders treat the symptom. Abstract rules re-injected are still abstract.",
+   "C": "Position helps a little at the start but doesn't fix rules that are hard to apply in each turn.",
+   "D": "Detect-and-regenerate is expensive and corrective rather than preventive."
+  },
+  "whenRight": "If examples were already present and drift still appeared late in long sessions, periodic reminders (A) would be a reasonable addition.",
+  "trap": "'2,800-token system prompt' of abstract rules: concrete examples are followed more reliably than declarative rules.",
+  "note": "Community-reported scenario. This aligns with guide 4.2: few-shot examples beat instructions for consistent behavior."
+ },
+ "COM-71": {
+  "domain": 5,
+  "task": "5.1",
+  "alsoTasks": [
+   "4.1"
+  ],
+  "why": {
+   "A": "Prepending to every user message duplicates tokens and mixes instructions into user content.",
+   "C": "The model treats its own earlier messages as conversation, not as binding instructions.",
+   "D": "Environment variables never reach the model unless your code puts them in the prompt."
+  },
+  "whenRight": "For very long conversations where guidelines drift, adding periodic reminders in the user turn on top of the system prompt becomes useful.",
+  "trap": "'behavioral guidelines' for the whole conversation: that is what the system prompt is for.",
+  "note": "Community-reported scenario. No official task matches exactly. It is tagged 5.1 because the system prompt persists across every request."
+ },
+ "COM-72": {
+  "domain": 4,
+  "task": "4.3",
+  "alsoTasks": [
+   "4.1"
+  ],
+  "why": {
+   "A": "Prefill used to be the classic trick, but prefilling the last assistant turn is no longer supported on current Claude models (from the 4.6 generation on). This was the community repo's key.",
+   "B": "Temperature controls randomness, not which phrases the model prefers.",
+   "C": "Post-processing is brittle and doesn't change generation. Use it only as a last resort."
+  },
+  "whenRight": "On older models that still support prefill, a partial assistant message (A) was the most reliable way to skip greetings.",
+  "trap": "'repetitive response openings': the community answer is prefill.",
+  "note": "Answer key changed from the community repo's A (prefill) to D, because current docs no longer support prefill. Guide v1.0 doesn't test prefill directly.",
+  "answer": [
+   "D"
+  ],
+  "explanation": "A direct system-prompt instruction, e.g. 'Respond directly without preamble; don't open with phrases like \"Certainly!\"', is what the current prompting docs recommend. Prefilling the assistant turn (A), the community repo's answer, is no longer supported on current Claude models (it returns an error)."
+ },
+ "COM-73": {
+  "domain": 5,
+  "task": "5.1",
+  "why": {
+   "A": "The system prompt is for stable instructions. Rewriting it per event is clumsy and invalidates prompt caching.",
+   "B": "A synthetic user message makes it look as if the user said something they didn't, which confuses attribution.",
+   "C": "Polling a tool every turn wastes calls when events are rare."
+  },
+  "whenRight": "If status changes were frequent and the user often asked about them, giving the assistant a status tool to call on demand (not forced every turn) would be reasonable.",
+  "trap": "'incorporate this naturally into the next response': inject the event as context alongside the next user turn."
+ },
+ "COM-74": {
+  "domain": 5,
+  "task": "5.2",
+  "why": {
+   "A": "Hidden defaults surprise the user, who doesn't know what was assumed.",
+   "B": "A list of questions is still the upfront effort that drives abandonment.",
+   "D": "A form adds friction, which works against the abandonment goal."
+  },
+  "whenRight": "If a wrong assumption would be costly or irreversible (for example, a non-refundable deposit), asking first (B) would be justified.",
+  "trap": "'35% abandonment' from clarifying questions: proceed with stated assumptions and invite corrections.",
+  "note": "Community-reported scenario. The closest official task is 5.2 (ambiguity resolution). The guide's 'ask for identifiers when multiple matches' applies to high-stakes ambiguity, not to low-cost preferences like these."
+ },
+ "COM-75": {
+  "domain": 5,
+  "task": "5.1",
+  "why": {
+   "A": "The system prompt is sent with every request and applies throughout the conversation, not just at the start.",
+   "B": "2,500 tokens is far too short for attention degradation to explain the drift.",
+   "D": "This is false. The system prompt is included in every API call."
+  },
+  "whenRight": "In a very long conversation (tens of thousands of tokens), position and attention effects (B) would become a plausible contributor.",
+  "trap": "'only 2,500 tokens': rules out capacity, so look at what the context is filling with.",
+  "note": "Community-reported scenario. The 'assistant responses dilute the system prompt' explanation is the community's reasoning and is not stated in the official guide or docs. Learn the takeaway (re-anchor behavior with examples or reminders) more than the mechanism."
+ },
+ "COM-76": {
+  "domain": 5,
+  "task": "5.2",
+  "why": {
+   "B": "A pre-classifier adds latency and infrastructure and still ends in either questions or guesses.",
+   "C": "Silent interpretations confuse users when the answer doesn't match their intent.",
+   "D": "One question per turn still spreads back-and-forth over several turns."
+  },
+  "whenRight": "If the request had several matching records (for example, two reports with the same name) and a wrong choice would have consequences, asking for the identifier (as in guide 5.2) would be right.",
+  "trap": "'40% abandonment': make reasonable stated assumptions and offer to adjust.",
+  "note": "Community-reported scenario. The closest official task is 5.2."
+ }
+}

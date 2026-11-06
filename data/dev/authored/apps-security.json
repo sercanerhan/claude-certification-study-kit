@@ -1,0 +1,1017 @@
+[
+ {
+  "id": "DV-2.1-01",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.1",
+  "type": "single",
+  "select": 1,
+  "difficulty": 3,
+  "stem": "A legal-tech team is turning a business requirement into a design. Lawyers ask questions about contracts uploaded as text-based PDFs, and every statement in an answer must point the auditor to the exact supporting sentence and its page. A developer proposes structured outputs with a `quote` field that Claude fills in for each claim. Which design best meets the requirement?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Keep the structured-outputs design and add a system-prompt rule that tells Claude to copy every quote verbatim from the contract text."
+   },
+   {
+    "key": "B",
+    "text": "Run OCR on every page, store the text in a vector database, and ask Claude to list the IDs of the chunks it relied on in each answer."
+   },
+   {
+    "key": "C",
+    "text": "Send the PDFs as document blocks with citations enabled, and build the audit view from the returned cited_text and page ranges."
+   },
+   {
+    "key": "D",
+    "text": "Enable citations on the documents and also set output_config.format, so that every answer is schema-valid JSON and carries citation blocks."
+   }
+  ],
+  "answer": [
+   "C"
+  ],
+  "explanation": "The citations feature returns the exact passages Claude relied on, extracted by the API rather than written by the model, so every citation is guaranteed to point into the supplied document; for PDFs each citation carries a 1-indexed page range. That is precisely the audit requirement. A quote field filled in by the model is only as faithful as the model's copying, and `cited_text` does not even count toward output tokens.",
+  "why": {
+   "A": "Prompt-based quoting is still model-generated text. Claude may paraphrase or merge sentences, and nothing guarantees the quote points to a real location; the docs report that the citations feature is more reliable than prompt-based quoting.",
+   "B": "The PDFs already contain extractable text, so OCR adds a pipeline without adding fidelity, and chunk IDs that the model reports are no more verifiable than a model-written quote.",
+   "D": "Citations and structured outputs are incompatible: enabling citations on a document while sending output_config.format makes the API return a 400 error."
+  },
+  "whenRight": "If the contracts were scanned images with no extractable text, citations could not cite them (image citations are not supported), so an OCR step that turns pages into plain-text or custom-content documents, as in B, would become a necessary first stage.",
+  "trap": "\"exact supporting sentence and its page\": verifiable source pointers are what the citations feature exists for, and it cannot be combined with structured outputs.",
+  "verified": [
+   "https://platform.claude.com/docs/en/build-with-claude/citations",
+   "https://platform.claude.com/docs/en/build-with-claude/pdf-support",
+   "https://platform.claude.com/docs/en/build-with-claude/overview"
+  ]
+ },
+ {
+  "id": "DV-2.1-02",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.1",
+  "type": "multi",
+  "select": 2,
+  "difficulty": 2,
+  "stem": "A product manager hands you the brief for a Claude-powered support-triage service. Before writing any prompts you separate the infrastructure requirements, which drive platform, region and capacity decisions, from the functional requirements that the prompt and application code will implement. Which TWO items in the brief are infrastructure requirements? (Select TWO.)",
+  "options": [
+   {
+    "key": "A",
+    "text": "Tickets from EU customers must be processed and stored inside the EU, as the data-protection officer requires."
+   },
+   {
+    "key": "B",
+    "text": "Each ticket must be classified into one of eight support queues, together with a one-line reason the human agent can read."
+   },
+   {
+    "key": "C",
+    "text": "Draft replies to customers must use plain language and must never mention internal product codenames or roadmap items."
+   },
+   {
+    "key": "D",
+    "text": "The service must sustain about 400 tickets per minute at the Monday-morning peak without building a backlog."
+   },
+   {
+    "key": "E",
+    "text": "Any ticket that mentions legal action must be routed to a human reviewer instead of receiving an automatic answer."
+   }
+  ],
+  "answer": [
+   "A",
+   "D"
+  ],
+  "explanation": "Where inference runs and where data rests is an infrastructure decision: it is met with data-residency controls (inference geo and workspace geo) or regional endpoints on a cloud platform, not with prompt wording. Sustained throughput is also infrastructure: it drives rate-limit tier, capacity planning and concurrency design. Classification, tone and escalation rules describe behaviour that the prompt, schema and routing code implement.",
+  "why": {
+   "B": "Classifying into fixed queues with a reason is a functional requirement, implemented with the prompt and an enum in a structured-output schema.",
+   "C": "Tone and banned vocabulary are output requirements handled by prompt instructions and, if critical, output filtering.",
+   "E": "This is a business rule about behaviour. It is implemented in the prompt plus routing logic or a guardrail, whatever region or capacity you choose."
+  },
+  "whenRight": "If E said the human review must happen in a separate audited system with its own uptime SLA, it would add an infrastructure requirement (a queue and an integration), though the routing rule itself would remain functional.",
+  "trap": "\"drive platform, region and capacity decisions\": residency and peak throughput change where and how you deploy; the other items change what the model does.",
+  "verified": [
+   "https://platform.claude.com/docs/en/build-with-claude/overview",
+   "https://platform.claude.com/docs/en/about-claude/models/choosing-a-model"
+  ]
+ },
+ {
+  "id": "DV-2.2-01",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.2",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "Your invoice-extraction service has called the same Claude model ID in production for a year. Anthropic emails you that this model is now deprecated, with a retirement date about two months away and a recommended replacement. What is the best plan?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Change nothing for now: deprecated models keep working, and on the retirement date traffic is moved to the recommended replacement automatically."
+   },
+   {
+    "key": "B",
+    "text": "Find every caller with the Console usage export, run your eval set against the replacement, then migrate well before the retirement date."
+   },
+   {
+    "key": "C",
+    "text": "Switch production to the replacement model today without testing, because newer models are strictly better and an eval run would only delay the move."
+   },
+   {
+    "key": "D",
+    "text": "Ask support for a retirement extension and start planning the migration only if that request is refused, so no engineering time is spent early."
+   }
+  ],
+  "answer": [
+   "B"
+  ],
+  "explanation": "Deprecated means still functional but no longer recommended, with an assigned retirement date; once a model is retired, requests to it fail. Anthropic's guidance is to audit usage (the Console Usage export breaks usage down by API key and model), test the replacement on your own prompts and data well before retirement, and then migrate. Announcements come with at least 60 days' notice for publicly released models, which is the window to do this.",
+  "why": {
+   "A": "Nothing migrates traffic for you: after the retirement date requests to the old model simply fail, so the service would break on that day.",
+   "C": "A newer model can still change behaviour on your task. The model-selection guidance is to benchmark with your actual prompts and data before switching.",
+   "D": "There is no basis for planning around an extension. Waiting spends the notice period and leaves the service exposed to failing on the retirement date."
+  },
+  "whenRight": "Switching straight away, as in C, becomes reasonable once your eval suite has already been run against the replacement and passes; the evidence, not the novelty of the model, justifies the move.",
+  "trap": "\"deprecated, with a retirement date\": deprecated still works, retired fails, and the notice period exists for an eval-backed migration.",
+  "verified": [
+   "https://platform.claude.com/docs/en/about-claude/model-deprecations",
+   "https://platform.claude.com/docs/en/about-claude/models/choosing-a-model"
+  ]
+ },
+ {
+  "id": "DV-2.2-02",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.2",
+  "type": "single",
+  "select": 1,
+  "difficulty": 3,
+  "stem": "A routine dependency update bumped the Python `anthropic` package to a new major version. Staging now fails every Messages request with a 400 error that names `temperature`, which the code sets to 0.2. No application code changed. What happened, and what is the right fix?",
+  "options": [
+   {
+    "key": "A",
+    "text": "The new SDK has a serialization bug in sampling parameters; roll back, open an issue on the SDK repository, and retry the upgrade once a patch ships."
+   },
+   {
+    "key": "B",
+    "text": "The model was retired on the same day; switch to its recommended replacement, which still accepts temperature, and redeploy staging."
+   },
+   {
+    "key": "C",
+    "text": "The API now requires temperature to be an integer; change 0.2 to 0 so the request passes validation and the output stays deterministic."
+   },
+   {
+    "key": "D",
+    "text": "The new major sends a newer API version that rejects sampling parameters; remove them, retest, and pin SDK majors in the lockfile."
+   }
+  ],
+  "answer": [
+   "D"
+  ],
+  "explanation": "Each SDK major version sends the API version that was current when it was released; for Python, 2.0.0 is the first to send `anthropic-version: 2026-10-21`. That API version removes `temperature`, `top_p` and `top_k`, and a request that sends any of them gets a 400 error even at the default value. The fix is to drop the parameters and steer behaviour with prompting, and to pin SDK major versions so API-version upgrades go through staging deliberately.",
+  "why": {
+   "A": "This is a documented breaking change in the new API version, not an SDK bug; a patch release will not bring the parameter back.",
+   "B": "The error names temperature and appeared exactly when the SDK major changed; nothing points to a retirement.",
+   "C": "Under 2026-10-21 any value of temperature is rejected, including 0 and the default of 1.0."
+  },
+  "whenRight": "Rolling back, as in A, is a valid stopgap if a request truly depends on a non-default temperature on a model that still accepts it: the migration guide says to keep that request on API version 2023-06-01 (the previous SDK major) while you rework it.",
+  "trap": "\"new major version\" plus a 400 naming temperature with no code change: SDK majors carry API-version changes, and 2026-10-21 removed sampling parameters.",
+  "verified": [
+   "https://platform.claude.com/docs/en/api/versioning",
+   "https://platform.claude.com/docs/en/api/migration-2026-10-21",
+   "https://platform.claude.com/docs/en/cli-sdks-libraries/sdks/python"
+  ]
+ },
+ {
+  "id": "DV-2.3-01",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.3",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "Your chat backend streams responses and records output tokens for per-customer billing. For each stream it adds up the `usage.output_tokens` value from every `message_delta` event it receives. Finance reports that the recorded totals are sometimes higher than the Console's usage figures. What is the most likely cause?",
+  "options": [
+   {
+    "key": "A",
+    "text": "The usage counts in message_delta events are cumulative, so summing several deltas double-counts; keep only the final value."
+   },
+   {
+    "key": "B",
+    "text": "Ping events in the stream carry hidden output tokens that the Console excludes, so the backend should subtract one token for every ping."
+   },
+   {
+    "key": "C",
+    "text": "Usage is reported separately for each content block, so a reply with thinking and text blocks reports overlapping counts to deduplicate."
+   },
+   {
+    "key": "D",
+    "text": "The message_start event already holds the final output count, so the backend should read usage there and ignore all later events."
+   }
+  ],
+  "answer": [
+   "A"
+  ],
+  "explanation": "The streaming docs warn that the token counts in the `usage` field of a `message_delta` event are cumulative. A stream can contain more than one `message_delta`, so adding them up counts the same tokens again; the last value (or the final `Message` from the SDK's accumulation helper) is the total. `message_start` carries only the initial usage, typically an output count of one or two tokens.",
+  "why": {
+   "B": "Ping events are keep-alives with no usage field; they do not carry tokens.",
+   "C": "Usage is reported at the message level, in message_start and message_delta, not per content block.",
+   "D": "message_start is sent before generation and contains a Message with empty content; its output count is only the starting value."
+  },
+  "whenRight": "If the backend used the SDK's stream helper, reading usage from the accumulated final message (for example get_final_message() in Python) would be the simplest correct option.",
+  "trap": "\"adds up ... every message_delta\": message_delta usage is cumulative, so summing it over-counts.",
+  "verified": [
+   "https://platform.claude.com/docs/en/build-with-claude/streaming"
+  ]
+ },
+ {
+  "id": "DV-2.3-02",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.3",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "An analytics tool answers questions about 80-page quarterly reports. The pipeline extracts each PDF's text with a parsing library and sends only that text to Claude. Questions about trends shown in the reports' bar charts often come back wrong or with 'the document does not say'. Which change addresses the root cause?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Raise max_tokens and ask Claude to reason step by step, so it has room to infer the chart values from the surrounding paragraphs."
+   },
+   {
+    "key": "B",
+    "text": "Split each report into 10-page text chunks, send the chunks as parallel requests, and merge the partial answers in application code."
+   },
+   {
+    "key": "C",
+    "text": "Send the PDF itself as a document block placed before the question, so Claude sees each page as an image along with its text."
+   },
+   {
+    "key": "D",
+    "text": "Add a second OCR pass that converts every chart into a CSV table, then append all of the tables to the extracted text before sending."
+   }
+  ],
+  "answer": [
+   "C"
+  ],
+  "explanation": "With native PDF support the API converts each page into an image and also extracts its text, so Claude can read charts, diagrams and tables, not just prose. The PDF guidance also recommends placing the document before the question. The current pipeline throws the visual content away before Claude ever sees it, so no prompt or parameter change can recover it.",
+  "why": {
+   "A": "More output budget does not give Claude the chart data; it is absent from the text that was sent.",
+   "B": "Chunking changes how much text each request holds, but every chunk is still text-only, so the charts remain invisible.",
+   "D": "It may recover some values, but it builds a brittle extra pipeline to approximate what native PDF input already provides, and OCR of charts loses structure."
+  },
+  "whenRight": "If only a few chart pages mattered and reports were very long, sending just those pages (a trimmed PDF or page images) would cut the per-page image tokens; text-only extraction stays fine for questions about the prose.",
+  "trap": "\"trends shown in the bar charts\" with a text-only pipeline: the information is visual, so send the PDF and let Claude see the pages.",
+  "verified": [
+   "https://platform.claude.com/docs/en/build-with-claude/pdf-support",
+   "https://platform.claude.com/docs/en/build-with-claude/vision"
+  ]
+ },
+ {
+  "id": "DV-2.3-03",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.3",
+  "type": "multi",
+  "select": 2,
+  "difficulty": 3,
+  "stem": "Your company is moving an existing Claude API application to Claude in Amazon Bedrock (Bedrock's Messages-API endpoint) so that traffic stays inside its AWS security boundary. The app uses the Anthropic Python SDK, sends images by URL, and runs a nightly Message Batches job. Which TWO statements about the migration are accurate? (Select TWO.)",
+  "options": [
+   {
+    "key": "A",
+    "text": "Every request body must be rewritten into Bedrock's Converse format, because this endpoint does not accept the Messages API request shape."
+   },
+   {
+    "key": "B",
+    "text": "Authentication moves to AWS credentials, such as an IAM role or a Bedrock bearer token, instead of an Anthropic API key."
+   },
+   {
+    "key": "C",
+    "text": "Model IDs are exactly the same as on the Claude API, so the existing model configuration can be deployed without any change."
+   },
+   {
+    "key": "D",
+    "text": "Images referenced by URL keep working unchanged, because Bedrock fetches the URL for the model exactly as the Claude API does."
+   },
+   {
+    "key": "E",
+    "text": "The nightly batch job needs redesigning, because the Message Batches endpoint is not offered on Bedrock."
+   }
+  ],
+  "answer": [
+   "B",
+   "E"
+  ],
+  "explanation": "Claude in Amazon Bedrock serves the same Messages API request shape at /anthropic/v1/messages, but it authenticates with a Bedrock service role, IAM assumed roles signed with SigV4, or short-lived bearer tokens, and the SDK uses a Bedrock-specific client. Its list of unsupported features includes the Message Batches endpoint and URL input sources, so the batch job and the image handling both need changes.",
+  "why": {
+   "A": "This endpoint uses the same Messages API request body as the Claude API; Converse is a separate, older integration.",
+   "C": "Bedrock model IDs carry an anthropic. provider prefix, for example anthropic.claude-opus-5-5, so the configuration must change.",
+   "D": "URL sources for images and documents are on Bedrock's unsupported list; images must be sent as base64."
+  },
+  "whenRight": "C would be right for Claude Platform on AWS, the Anthropic-operated AWS offering, which uses the Claude API model IDs rather than Bedrock-style IDs.",
+  "trap": "\"Message Batches job\" and \"images by URL\": check the platform's unsupported-features list before assuming parity with the Claude API.",
+  "verified": [
+   "https://platform.claude.com/docs/en/build-with-claude/claude-in-amazon-bedrock",
+   "https://platform.claude.com/docs/en/models/overview"
+  ]
+ },
+ {
+  "id": "DV-2.4-01",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.4",
+  "type": "multi",
+  "select": 2,
+  "difficulty": 2,
+  "stem": "You are writing the error-handling policy for a service that calls the Messages API over raw HTTP, without an SDK. Which TWO responses should the client retry automatically with exponential backoff and jitter, honouring retry-after when it is present? (Select TWO.)",
+  "options": [
+   {
+    "key": "A",
+    "text": "400 invalid_request_error, returned because the request's messages array is malformed for the model being called."
+   },
+   {
+    "key": "B",
+    "text": "401 authentication_error, returned after the platform team revoked the API key stored in the service's secret manager."
+   },
+   {
+    "key": "C",
+    "text": "429 rate_limit_error with a retry-after header, returned during a short burst above the organization's rate limit."
+   },
+   {
+    "key": "D",
+    "text": "529 overloaded_error, returned while the API is under unusually high traffic across all users."
+   },
+   {
+    "key": "E",
+    "text": "413 request_too_large, returned for a request that embeds several large PDFs as base64 and exceeds the size limit."
+   }
+  ],
+  "answer": [
+   "C",
+   "D"
+  ],
+  "explanation": "A rate-limit 429 and a 529 overload are transient: the same request is likely to succeed later, so backoff with jitter (and the retry-after header for 429s) is the right response. This is also what the official SDKs do automatically for rate limits and 5xx errors. Errors caused by the request itself or by its credentials fail identically on every retry and need a code or configuration fix.",
+  "why": {
+   "A": "A malformed request is rejected the same way every time. Retrying only burns quota; fix the request.",
+   "B": "A revoked key stays revoked. The fix is to rotate the secret and alert, not to retry.",
+   "E": "Size limits are fixed per endpoint. Shrink the payload, for example by uploading the PDFs with the Files API and referencing them by file_id."
+  },
+  "whenRight": "Not every 429 is transient: a 429 caused by reaching the usage tier's monthly spend cap has no retry-after header and keeps failing until access resumes, so that case should alert rather than retry.",
+  "trap": "\"retry automatically\": retry only what is transient (429 rate limit, 529, 5xx); 4xx errors that describe the request or the key need a fix, not a retry.",
+  "verified": [
+   "https://platform.claude.com/docs/en/api/errors",
+   "https://platform.claude.com/docs/en/cli-sdks-libraries/sdks/python"
+  ]
+ },
+ {
+  "id": "DV-2.4-02",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.4",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "A service parses replies with `text = response.content[0].text`. After the team moves to a model on which thinking is always on, that line starts raising AttributeError on some responses, although the reply text looks fine when the whole response is logged. What is the correct fix?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Send thinking set to disabled in every request so the content array goes back to containing exactly one text block per response."
+   },
+   {
+    "key": "B",
+    "text": "Treat content as a list of typed blocks: pick the blocks whose type is text and join them, ignoring the other block types."
+   },
+   {
+    "key": "C",
+    "text": "Read response.content[-1].text instead, since the last block of every response is guaranteed to be the text answer for the user."
+   },
+   {
+    "key": "D",
+    "text": "Wrap the line in try/except and resend the request until the first content block of the response happens to be a text block."
+   }
+  ],
+  "answer": [
+   "B"
+  ],
+  "explanation": "The `content` field of a response is an array of typed blocks (for example thinking, text and tool_use), and its order and length vary. Robust code selects blocks by type, which is exactly how the official SDK examples read a reply. With thinking always on, a thinking block can come before the text block, so index 0 is no longer guaranteed to be text.",
+  "why": {
+   "A": "On always-thinking models, sending thinking type disabled returns a 400 error; and changing model behaviour to work around a parser bug is the wrong layer anyway.",
+   "C": "The last block can be a tool_use block, and a reply can contain several text blocks, so positional access is just as fragile.",
+   "D": "Retrying a successful response wastes tokens and latency and still never fixes the parser."
+  },
+  "whenRight": "Disabling thinking (A) is possible on models that accept it, such as Claude Haiku 5.5, if you want the behaviour change for its own sake, but type-based parsing (B) is still the correct parser.",
+  "trap": "\"content[0].text\": content is a list of typed blocks; select by type, never by position.",
+  "verified": [
+   "https://platform.claude.com/docs/en/build-with-claude/working-with-messages",
+   "https://platform.claude.com/docs/en/api/errors",
+   "https://platform.claude.com/docs/en/cli-sdks-libraries/sdks/python"
+  ]
+ },
+ {
+  "id": "DV-2.4-03",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.4",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "A Python job must generate 2,000 product descriptions and push each one to a live merchandising UI as soon as it is ready; the full run should take minutes, not hours. The first version calls `asyncio.gather` on 2,000 `AsyncAnthropic` requests at once and is flooded with 429 errors. What is the best redesign?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Switch to the synchronous client in a plain for-loop with time.sleep(1) between calls, so the job can never exceed any rate limit."
+   },
+   {
+    "key": "B",
+    "text": "Submit all 2,000 prompts as one Message Batches request and poll it, because batch processing avoids the rate limits entirely."
+   },
+   {
+    "key": "C",
+    "text": "Wrap each call in a custom loop of ten immediate retries on top of the SDK's own retries, so that every request eventually succeeds."
+   },
+   {
+    "key": "D",
+    "text": "Keep the async client but cap in-flight requests with a semaphore sized to your rate limit, and let the SDK back off on 429s."
+   }
+  ],
+  "answer": [
+   "D"
+  ],
+  "explanation": "Bounded concurrency keeps the job fast while staying under the rate limit: a semaphore (or worker pool) limits in-flight requests, and the SDK already retries 429s twice with exponential backoff, honouring retry-after, with `max_retries` to tune it. Each description can be pushed to the UI as soon as its request completes, which meets the minutes-scale requirement.",
+  "why": {
+   "A": "Fully serial calls with a fixed sleep take 2,000 round trips end to end, far beyond minutes, and still do not adapt to the actual limit.",
+   "B": "Batch results are read after the batch has finished processing, so nothing can be pushed as soon as it is ready; batches suit latency-tolerant work.",
+   "C": "Immediate retries stacked on SDK retries multiply traffic exactly when the API is asking you to slow down, making the 429 storm worse."
+  },
+  "whenRight": "B would be right if the descriptions were only needed the next morning and cost mattered more than latency; that is the batch-versus-realtime case of the official sample.",
+  "trap": "\"as soon as it is ready\" plus a 429 flood: control concurrency and back off; do not serialize, stack retries, or move to batch.",
+  "verified": [
+   "https://platform.claude.com/docs/en/cli-sdks-libraries/sdks/python",
+   "https://platform.claude.com/docs/en/api/errors",
+   "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+  ]
+ },
+ {
+  "id": "DV-2.4-04",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.4",
+  "type": "single",
+  "select": 1,
+  "difficulty": 3,
+  "stem": "You need to migrate about 300 files from a deprecated logging API to its replacement using Claude Code. The change is mechanical but touches many modules, and reviewers want changes they can actually read and revert. Which approach best fits version-control and code-review practice?",
+  "options": [
+   {
+    "key": "A",
+    "text": "On a feature branch, script one headless run per file that commits that file, pilot it on three files, then run the rest behind the tests."
+   },
+   {
+    "key": "B",
+    "text": "Open one interactive session, ask Claude to migrate all 300 files in a single pass, and review the resulting combined diff before merging it."
+   },
+   {
+    "key": "C",
+    "text": "Run Claude directly on main with permission prompts bypassed so the migration finishes overnight, and revert main tomorrow if any tests fail."
+   },
+   {
+    "key": "D",
+    "text": "Ask Claude to make the old logging module forward every call to the new one, and skip migrating the callers, since a shim means nothing breaks."
+   }
+  ],
+  "answer": [
+   "A"
+  ],
+  "explanation": "Claude Code's guidance for fan-out work is a loop of scoped `claude -p` runs, each with pre-approved tools such as Read, Edit and `git commit`, and to try it on a few files first, fix the prompt, then run the rest. One commit per file gives reviewers small, revertible changes on a branch, and the test suite acts as the check each run must pass before it counts.",
+  "why": {
+   "B": "One 300-file diff is effectively unreviewable, a single bad pattern spreads everywhere, and the long session keeps re-reading its whole history.",
+   "C": "Working on main with prompts bypassed removes both the review step and the safety net; the guidance is to protect main and scope what the run may touch.",
+   "D": "A shim hides the deprecated API instead of migrating away from it; the requirement is to move the callers."
+  },
+  "whenRight": "B is fine for a handful of files, where a single diff stays readable and the overhead of a scripted loop is not worth it.",
+  "trap": "\"read and revert\" across 300 files: small per-file commits on a branch, piloted first and gated by tests.",
+  "verified": [
+   "https://code.claude.com/docs/en/best-practices",
+   "https://code.claude.com/docs/en/headless"
+  ]
+ },
+ {
+  "id": "DV-2.5-01",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.5",
+  "type": "multi",
+  "select": 2,
+  "difficulty": 3,
+  "stem": "You are designing the JSON schema for structured outputs that extract fields from supplier invoices. Some invoices have no PO number, and `category` must be one of six values that your accounting system accepts. Which TWO schema decisions are sound? (Select TWO.)",
+  "options": [
+   {
+    "key": "A",
+    "text": "Declare category as a string enum listing the six accepted values, and compare it case-insensitively when you consume it."
+   },
+   {
+    "key": "B",
+    "text": "Add minimum and maximum keywords to total_amount so that the API itself rejects any negative or implausibly large invoice amount."
+   },
+   {
+    "key": "C",
+    "text": "Make po_number required but nullable, and instruct Claude to return null when the invoice does not show a PO number."
+   },
+   {
+    "key": "D",
+    "text": "Model line items as a recursive schema so that bundles nested inside other bundles can be represented to any depth."
+   },
+   {
+    "key": "E",
+    "text": "Set additionalProperties to true on the root object so Claude can add useful fields that the schema did not anticipate."
+   }
+  ],
+  "answer": [
+   "A",
+   "C"
+  ],
+  "explanation": "Enums are supported and constrain category to the accepted values; the docs note that Claude may differ only in capitalization, so a case-insensitive comparison is a sensible consumer-side guard. A required field whose type allows null gives Claude an honest way to say 'absent' instead of inventing a PO number. Numeric range keywords, recursive schemas and additionalProperties other than false are all on the unsupported list and produce a 400 error.",
+  "why": {
+   "B": "minimum and maximum are not supported by structured outputs; the request returns a 400 error. Validate the range in your own code.",
+   "D": "Recursive schemas are not supported. Flatten the structure or cap the nesting at a fixed depth.",
+   "E": "Objects must set additionalProperties to false; any other value is rejected."
+  },
+  "whenRight": "B's intent is achievable through the SDK helpers (Pydantic or Zod): they move unsupported constraints such as minimum into the field description and validate the response locally, so the range is enforced in your code rather than by the API.",
+  "trap": "\"some invoices have no PO number\" and \"one of six values\": use nullable fields and enums, and avoid the schema features structured outputs does not support.",
+  "verified": [
+   "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+  ]
+ },
+ {
+  "id": "DV-2.5-02",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.5",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "A product manager prototyped a support assistant in claude.ai, where answers knew today's date and always put code in Markdown blocks. A developer ports the same instructions to the Messages API, and responses now guess the date wrongly and format code inconsistently. Why, and what should the developer do?",
+  "options": [
+   {
+    "key": "A",
+    "text": "The API falls back to a smaller default model; set the model parameter to the same model that the claude.ai picker showed."
+   },
+   {
+    "key": "B",
+    "text": "The API ignores system prompts until an account is verified; move all of the instructions into the first user message instead."
+   },
+   {
+    "key": "C",
+    "text": "claude.ai Projects store instructions on the server; recreate the project through the API so the app inherits the same settings."
+   },
+   {
+    "key": "D",
+    "text": "claude.ai adds its own system prompt, which the API does not; put the date and formatting rules into your own system prompt."
+   }
+  ],
+  "answer": [
+   "D"
+  ],
+  "explanation": "claude.ai and the mobile apps send their own system prompt that supplies up-to-date information such as the current date and encourages behaviours such as Markdown code blocks; those prompts do not apply to the Claude API. Through the API Claude receives only what your request contains, so the application must supply the date (injected at request time) and its formatting rules itself.",
+  "why": {
+   "A": "The Messages API has no default model: model is a required parameter, so nothing silently falls back.",
+   "B": "There is no such verification rule; system prompts work for every account.",
+   "C": "Nothing in claude.ai is inherited by API calls; there is no project to recreate."
+  },
+  "whenRight": "A model mismatch could explain a difference in answer quality if the developer had in fact chosen a different model ID, but it would not explain the date problem.",
+  "trap": "\"knew today's date\" in claude.ai only: the consumer apps add a system prompt that the API does not.",
+  "verified": [
+   "https://platform.claude.com/docs/en/release-notes/system-prompts",
+   "https://platform.claude.com/docs/en/build-with-claude/working-with-messages"
+  ]
+ },
+ {
+  "id": "DV-2.5-03",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.5",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "A developer has used one Claude Code session all day: an OAuth migration in the morning, a CSS fix after lunch, and now a flaky integration test. Claude keeps referring to OAuth files, two corrections on the test have not helped, and each response is slower and more expensive than the last. What should the developer do next?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Send a third, more forceful correction in capitals, since repeating the constraint usually pushes the model off an incorrect approach."
+   },
+   {
+    "key": "B",
+    "text": "Run /clear, then write one new prompt about the flaky test that folds in what the two failed attempts revealed."
+   },
+   {
+    "key": "C",
+    "text": "Switch to a larger model with /model and keep the session, because more capability lets it ignore the irrelevant history."
+   },
+   {
+    "key": "D",
+    "text": "Add the test's details to CLAUDE.md and carry on in the same session, so the instructions are re-read on every single turn."
+   }
+  ],
+  "answer": [
+   "B"
+  ],
+  "explanation": "Every request resends the whole conversation, so a session that has collected unrelated tasks keeps paying for them and keeps them in view. Claude Code's guidance is to /clear between unrelated tasks, and after two failed corrections to /clear and write a better prompt that includes what you learned, rather than add a third correction to a context that already contains two failed attempts.",
+  "why": {
+   "A": "A third correction adds to a history that already holds two failed attempts for Claude to keep re-reading.",
+   "C": "The irrelevant history stays, and each model has its own prompt cache, so the first request after a switch re-reads the whole conversation uncached.",
+   "D": "CLAUDE.md is for facts every session needs; it does not remove the stale history that is causing the drift and cost."
+  },
+  "whenRight": "If the earlier work were still relevant to the current task, /compact with a focus (for example 'keep the test setup and the failing command') would preserve the useful parts better than /clear.",
+  "trap": "\"unrelated tasks\" and \"two corrections have not helped\": start clean with /clear and one better prompt.",
+  "verified": [
+   "https://code.claude.com/docs/en/best-practices",
+   "https://code.claude.com/docs/en/settings"
+  ]
+ },
+ {
+  "id": "DV-2.5-04",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.5",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "Over the past months, developers on your team have installed about a dozen Claude Code plugins at user scope. They report that context fills faster and usage is higher, even in sessions where they use none of those plugins' features. What is the most effective fix?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Nothing is needed, because plugin skills, agents and commands cost no context at all until one of them is invoked in the session."
+   },
+   {
+    "key": "B",
+    "text": "Copy every plugin's skills into CLAUDE.md sections instead, because CLAUDE.md content is cheaper to keep loaded than skill descriptions."
+   },
+   {
+    "key": "C",
+    "text": "Disable plugins not used recently, and enable the others only at project or local scope in the repositories that need them."
+   },
+   {
+    "key": "D",
+    "text": "Move every plugin to the shared .claude/settings.json of each repository, so that each one loads once per repository rather than per developer."
+   }
+  ],
+  "answer": [
+   "C"
+  ],
+  "explanation": "An enabled plugin is part of every session: the name and description of each skill, agent and command that Claude can invoke on its own sit in context on every turn, and its MCP servers and hooks run, even when nothing from it is used. The /plugin Installed tab groups plugins that are not used recently, and plugins can be disabled without uninstalling or enabled at project or local scope only where they are needed.",
+  "why": {
+   "A": "The docs say the opposite: descriptions are in context on every turn and count toward usage even when nothing from the plugin runs.",
+   "B": "CLAUDE.md loads its full text into every session, so copying skills there makes the context cost worse, not better.",
+   "D": "Project scope enables the plugins for everyone who works in the repository, so every session there still pays the cost, now for the whole team."
+  },
+  "whenRight": "For a plugin that really is used in every project, user scope is the right place; and for a single skill that should run only on request, disable-model-invocation removes its description from context.",
+  "trap": "\"even in sessions where they use none of those plugins\": enabled plugins cost context every turn, so disable or narrow their scope.",
+  "verified": [
+   "https://code.claude.com/docs/en/plugins",
+   "https://code.claude.com/docs/en/skills"
+  ]
+ },
+ {
+  "id": "DV-2.6-01",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.6",
+  "type": "single",
+  "select": 1,
+  "difficulty": 3,
+  "stem": "A nightly CI job runs Claude Code against a fixed eval repository, with `\"model\": \"opus\"` in the committed .claude/settings.json. Last week the scores shifted overnight although no prompt, code or setting had changed. The team needs runs to stay comparable until it decides to upgrade. What should it change?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Replace the alias with a full model name such as claude-opus-5-5, so the job keeps that model until someone edits the setting."
+   },
+   {
+    "key": "B",
+    "text": "Set the model to default instead, because the default value is locked to whichever model was current when the account was created."
+   },
+   {
+    "key": "C",
+    "text": "Remove the model key entirely and let each runner pick its own model, so that run-to-run differences average out over several nights."
+   },
+   {
+    "key": "D",
+    "text": "Keep the alias and switch it to opusplan, which freezes the Opus version used for planning and only switches to Sonnet for execution."
+   }
+  ],
+  "answer": [
+   "A"
+  ],
+  "explanation": "Claude Code's model aliases point to the recommended version for your provider and update over time, so `opus` can silently move to a newer model. To pin a version, use the full model name or set the matching environment variable such as ANTHROPIC_DEFAULT_OPUS_MODEL. On the Claude API every model ID is itself a pinned snapshot, including the dateless IDs used since the 4.6 generation.",
+  "why": {
+   "B": "default clears any override and reverts to the runtime default for your account, which can change too.",
+   "C": "Leaving each runner to choose makes runs less comparable, not more, and averaging does not remove a model change.",
+   "D": "opusplan simply combines the opus and sonnet aliases, so both halves still move when the aliases update."
+  },
+  "whenRight": "Keeping the alias is right for day-to-day interactive work, where you want new recommended models automatically and comparability across runs does not matter.",
+  "trap": "\"no prompt, code or setting had changed\" yet results moved: an alias resolved to a newer model, so pin the full model name.",
+  "verified": [
+   "https://code.claude.com/docs/en/model-config",
+   "https://platform.claude.com/docs/en/models/overview"
+  ]
+ },
+ {
+  "id": "DV-2.6-02",
+  "exam": "CCDV-F",
+  "domain": 2,
+  "skill": "2.6",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "Your team wants Claude Code blocked from reading .env files for everyone who clones the repository. Separately, one developer wants a different model in this repository only, without affecting teammates. Where should each setting go?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Both settings in ~/.claude/settings.json on every developer's machine, since user settings outrank project settings for the whole team."
+   },
+   {
+    "key": "B",
+    "text": "The .env rule as a written instruction in CLAUDE.md, and the developer's model choice in the committed .claude/settings.json file."
+   },
+   {
+    "key": "C",
+    "text": "The deny rule in the committed .claude/settings.json, and the model in that developer's own .claude/settings.local.json."
+   },
+   {
+    "key": "D",
+    "text": "Both settings in .claude/settings.local.json, because local settings have the highest precedence and travel with every clone of the repo."
+   }
+  ],
+  "answer": [
+   "C"
+  ],
+  "explanation": "The shared project file, .claude/settings.json, is meant to be committed so every clone gets the same permissions, and its deny rules apply immediately without waiting for workspace trust. The project-local file, .claude/settings.local.json, sits above the shared file in precedence, applies only to that developer, and is kept out of git, which makes it the place for personal per-project overrides such as the model.",
+  "why": {
+   "A": "User settings are the lowest level, below shared project settings, and they exist only on each person's machine, so nobody can rely on them for a team rule.",
+   "B": "CLAUDE.md is context, not enforcement; a hard block needs a permission deny rule. And a model set in the shared file changes it for everyone.",
+   "D": "The local file is excluded from git, so the deny rule would never reach teammates; managed settings, not local ones, are the top level."
+  },
+  "whenRight": "If the organization needed the .env block on every repository regardless of what each project commits, it would go in managed settings, which nothing in user, project or local files can override.",
+  "trap": "\"for everyone who clones\" versus \"without affecting teammates\": committed shared file for team rules, gitignored local file for personal overrides.",
+  "verified": [
+   "https://code.claude.com/docs/en/settings",
+   "https://code.claude.com/docs/en/memory"
+  ]
+ },
+ {
+  "id": "DV-3.1-01",
+  "exam": "CCDV-F",
+  "domain": 3,
+  "skill": "3.1",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "Your repository has a `/deploy-prod` skill at .claude/skills/deploy-prod/SKILL.md. Twice this month Claude invoked it on its own after a developer typed 'looks good, ship it'. You want the skill to run only when a developer types the command explicitly. What should you change?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Set user-invocable: false in the skill's frontmatter, so the skill is hidden and can no longer be triggered from the conversation."
+   },
+   {
+    "key": "B",
+    "text": "Set disable-model-invocation: true in the frontmatter, so only a user can invoke it and its description leaves Claude's context."
+   },
+   {
+    "key": "C",
+    "text": "Move the file to .claude/commands/deploy-prod.md, because files in the commands folder can only ever be run by a user, never by Claude."
+   },
+   {
+    "key": "D",
+    "text": "Add allowed-tools to the frontmatter listing only the deploy script, so Claude needs explicit approval before it can invoke the skill."
+   }
+  ],
+  "answer": [
+   "B"
+  ],
+  "explanation": "disable-model-invocation: true means you can invoke the skill but Claude cannot, and its description is no longer placed in context, so Claude has nothing to match 'ship it' against. By default both you and Claude can invoke a skill, which is what happened here.",
+  "why": {
+   "A": "user-invocable: false does the opposite: it hides the skill from the / menu so only Claude can invoke it.",
+   "C": "Custom commands have been merged into skills; a file in .claude/commands creates the same /deploy-prod and behaves the same way.",
+   "D": "allowed-tools pre-approves tools for the turn in which the skill runs; it does not control who may invoke the skill."
+  },
+  "whenRight": "user-invocable: false (A) is the right setting for background-knowledge skills that Claude should apply when relevant but that make no sense as a command. For a hard guarantee that the deploy command itself never runs unattended, add a deny rule or a PreToolUse hook as well.",
+  "trap": "\"only when a developer types the command\": that is disable-model-invocation, not user-invocable.",
+  "verified": [
+   "https://code.claude.com/docs/en/skills"
+  ]
+ },
+ {
+  "id": "DV-3.1-02",
+  "exam": "CCDV-F",
+  "domain": 3,
+  "skill": "3.1",
+  "type": "multi",
+  "select": 2,
+  "difficulty": 3,
+  "stem": "Your project's CLAUDE.md has grown to 600 lines: build commands, a 120-line release procedure used about once a month, and detailed React conventions that matter only under src/web/. Claude's adherence to the file is dropping. Which TWO changes reduce what loads into every session while keeping the guidance available when it is needed? (Select TWO.)",
+  "options": [
+   {
+    "key": "A",
+    "text": "Split the file into several topic files and pull them back into CLAUDE.md with @path imports, so that each file stays short."
+   },
+   {
+    "key": "B",
+    "text": "Move the release procedure into a skill, so only its name and description stay in context until someone actually needs it."
+   },
+   {
+    "key": "C",
+    "text": "Move the React conventions into CLAUDE.local.md, which loads only for the developers who have created it in their checkout."
+   },
+   {
+    "key": "D",
+    "text": "Ask Claude to save the conventions into auto memory, which stays out of context until Claude decides it needs to search it."
+   },
+   {
+    "key": "E",
+    "text": "Put the React conventions in a .claude/rules/ file with paths frontmatter for src/web/**, so they load only for that code."
+   }
+  ],
+  "answer": [
+   "B",
+   "E"
+  ],
+  "explanation": "The memory docs recommend keeping each CLAUDE.md under about 200 lines and moving multi-step procedures and area-specific guidance out of it. A skill keeps only its description in context and loads the full text when invoked, and a path-scoped rule loads only when Claude works with matching files. Both shrink the always-loaded context without losing the guidance.",
+  "why": {
+   "A": "Imports help organize a long file but do not reduce its context cost: imported files load together with the CLAUDE.md that imports them.",
+   "C": "CLAUDE.local.md loads alongside CLAUDE.md at launch, so it saves nothing for that developer and hides the conventions from everyone else.",
+   "D": "Auto memory is also loaded at the start of every session (its first 200 lines or 25KB), and it is meant for Claude's own learnings, not team conventions."
+  },
+  "whenRight": "A is the right move when the only goal is maintainability of a long file, for example letting different teams own different topic files, and context cost is not a concern.",
+  "trap": "\"reduce what loads into every session\": skills and path-scoped rules load on demand; imports, local files and auto memory still load at startup.",
+  "verified": [
+   "https://code.claude.com/docs/en/memory",
+   "https://code.claude.com/docs/en/skills"
+  ]
+ },
+ {
+  "id": "DV-4.1-01",
+  "exam": "CCDV-F",
+  "domain": 4,
+  "skill": "4.1",
+  "type": "single",
+  "select": 1,
+  "difficulty": 3,
+  "stem": "An extraction service uses structured outputs, yet about 2% of production responses fail JSON parsing. Traces of the failed calls show HTTP 200, a stop_reason of max_tokens, and input documents much longer than average. A teammate wants to add 'always return complete, valid JSON' to the system prompt. Where is the problem, and what is the fix?",
+  "options": [
+   {
+    "key": "A",
+    "text": "In the model output: structured outputs drift on long inputs, so add the prompt rule plus a few examples of complete JSON responses."
+   },
+   {
+    "key": "B",
+    "text": "In the network layer: a proxy timeout is cutting long responses, so switch the service to streaming and keep every other setting."
+   },
+   {
+    "key": "C",
+    "text": "In the schema: the grammar is too complex for long documents, so flatten it and remove optional fields until the failures stop."
+   },
+   {
+    "key": "D",
+    "text": "In the integration layer: max_tokens cut the output short, so check stop_reason before parsing and raise or size the limit."
+   }
+  ],
+  "answer": [
+   "D"
+  ],
+  "explanation": "Structured outputs guarantee schema-valid JSON except in two documented cases, a refusal and a max_tokens stop, where the output may be incomplete. The traces show a successful 200 response with stop_reason max_tokens on long inputs, so the request's own limit truncated the JSON. That is a request-configuration problem: check stop_reason before parsing and retry with, or size, a higher max_tokens.",
+  "why": {
+   "A": "The model is producing valid JSON until the token limit stops it; no instruction can extend a budget the request set.",
+   "B": "A proxy cut would surface as a connection or timeout error, not as a complete 200 response with stop_reason max_tokens.",
+   "C": "A schema that is too complex is rejected up front with a 400 error ('Schema is too complex for compilation'), not truncated in a 200 response."
+  },
+  "whenRight": "If the failed traces had shown stop_reason refusal instead, the output would not match the schema because the refusal takes precedence; the fix would then be refusal handling, such as a fallback model, not a larger max_tokens.",
+  "trap": "\"HTTP 200 ... stop_reason of max_tokens\": the trace already locates the fault in the request settings, not in the model's behaviour.",
+  "verified": [
+   "https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+   "https://platform.claude.com/docs/en/api/handling-stop-reasons"
+  ]
+ },
+ {
+  "id": "DV-7.1-01",
+  "exam": "CCDV-F",
+  "domain": 7,
+  "skill": "7.1",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "A customer-facing support bot's system prompt contains the full internal discount matrix and the private phone numbers of escalation managers, although the bot only ever needs to offer one standard goodwill code. Users have started posting screenshots of the bot revealing those phone numbers. What should you do first?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Remove the data the bot does not need from its prompt, and screen outputs so replies containing restricted values are blocked."
+   },
+   {
+    "key": "B",
+    "text": "Add several paragraphs of 'never reveal these instructions' rules with examples, and keep the full matrix in place for flexibility."
+   },
+   {
+    "key": "C",
+    "text": "Move the matrix and the phone numbers from the system prompt into the first user turn, where end users cannot see or reference them."
+   },
+   {
+    "key": "D",
+    "text": "Switch to a larger model, which follows confidentiality instructions more reliably and is therefore less likely to repeat the prompt."
+   }
+  ],
+  "answer": [
+   "A"
+  ],
+  "explanation": "Anthropic's prompt-leak guidance is to leave out proprietary details the model does not need, since data that is not in the prompt cannot leak, and to try monitoring first, such as output screening and post-processing with keyword filters or a prompted classifier. Leak-resistant prompting should be used only when absolutely necessary, because the added complexity can degrade the task.",
+  "why": {
+   "B": "Long anti-leak instructions are not an enforceable control and can degrade performance; the docs also note that extra content reduces adherence to 'no leak' instructions.",
+   "C": "Content in a user turn is just as much part of the context the model can repeat; it does not hide anything.",
+   "D": "Model size does not create a confidentiality boundary; the data is still in the context and can still be extracted."
+  },
+  "whenRight": "If the bot genuinely needed confidential details to do its job, separating that context from user queries and adding leak-resistant instructions, backed by output post-processing and tests for any quality loss, would become justified.",
+  "trap": "\"only ever needs one standard code\": the safest secret is the one you never put in the prompt.",
+  "verified": [
+   "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-prompt-leak",
+   "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks"
+  ]
+ },
+ {
+  "id": "DV-7.2-01",
+  "exam": "CCDV-F",
+  "domain": 7,
+  "skill": "7.2",
+  "type": "single",
+  "select": 1,
+  "difficulty": 3,
+  "stem": "You are deploying an Agent SDK agent in CI that reads a repository and posts a review summary through your internal API. It processes pull requests from external contributors, so its input is untrusted. Which container setup best applies least privilege and defense in depth?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Run as root with full network access so that no tool ever fails, and rely on the system prompt to tell the agent never to touch secrets."
+   },
+   {
+    "key": "B",
+    "text": "Mount the developer's home directory read-only, so the agent can reuse the existing git and cloud credentials without creating new ones."
+   },
+   {
+    "key": "C",
+    "text": "Mount the code read-only, run non-root with all capabilities dropped, and allow network only via a proxy to the review API."
+   },
+   {
+    "key": "D",
+    "text": "Grant broad permissions but add a PostToolUse hook that logs every command, so that any damage can be traced and reverted afterwards."
+   }
+  ],
+  "answer": [
+   "C"
+  ],
+  "explanation": "The secure-deployment guide's least-privilege table is to mount only the directories needed, read-only where possible; restrict network to specific endpoints through a proxy; inject credentials at that proxy; and drop Linux capabilities. Its hardened container example also runs as a non-root user with --network none and a mounted proxy socket. Layering these controls means a successful injection from an untrusted pull request has little to reach and nowhere to send it.",
+  "why": {
+   "A": "A prompt is not a control. Root plus open egress gives an injected instruction everything it needs to exfiltrate data.",
+   "B": "The guide warns specifically against mounting sensitive host directories such as ~/.ssh, ~/.aws or ~/.config; read-only still exposes the credentials.",
+   "D": "Logging after the fact is detective, not preventive; PostToolUse runs once the command has already executed."
+  },
+  "whenRight": "For a developer running Claude Code on trusted code on a laptop, the built-in permission system and sandbox mode may be enough; full container hardening fits untrusted input and multi-tenant deployments like this one.",
+  "trap": "\"input is untrusted\" plus \"least privilege and defense in depth\": restrict filesystem, identity and network together, enforced outside the model.",
+  "verified": [
+   "https://code.claude.com/docs/en/agent-sdk/secure-deployment",
+   "https://code.claude.com/docs/en/security"
+  ]
+ },
+ {
+  "id": "DV-7.4-01",
+  "exam": "CCDV-F",
+  "domain": 7,
+  "skill": "7.4",
+  "type": "single",
+  "select": 1,
+  "difficulty": 2,
+  "stem": "An agent running in a container triages inbound customer emails and must call your billing API, which requires a bearer token. Today the token sits in an environment variable inside the container. Because the emails are untrusted, security worries that an injected instruction could make the agent print or send the token elsewhere. What is the recommended fix?",
+  "options": [
+   {
+    "key": "A",
+    "text": "Keep the variable but base64-encode the token, and tell the agent in the system prompt never to decode or output that value."
+   },
+   {
+    "key": "B",
+    "text": "Run a proxy outside the container that adds the token to billing API requests, so the agent never holds the credential."
+   },
+   {
+    "key": "C",
+    "text": "Give the agent a get_secret tool that fetches the token from the vault on demand, so the token is never stored in the container."
+   },
+   {
+    "key": "D",
+    "text": "Rotate the token every day but keep it in the environment, since a leaked token would then stay valid for at most a single day."
+   }
+  ],
+  "answer": [
+   "B"
+  ],
+  "explanation": "The recommended credential pattern for agents is a proxy outside the agent's security boundary that injects credentials into outgoing requests. The agent can call the billing API but never sees the token, the proxy can enforce an allowlist of permitted endpoints and log every request, and the credential lives in one secure place instead of in each agent environment.",
+  "why": {
+   "A": "Encoding is not encryption, and the instruction is just a prompt; the agent can still read and leak the value.",
+   "C": "Fetching on demand still places the token in the agent's context, where an injected instruction can make it repeat or send it.",
+   "D": "Rotation narrows the window but leaves the token readable by the agent; it complements, rather than replaces, keeping secrets out of reach."
+  },
+  "whenRight": "Short-lived, narrowly scoped tokens with regular rotation (D's idea) are the right fallback where a proxy is not feasible, and good hygiene alongside one.",
+  "trap": "\"the agent never holds the credential\" is the goal: put secrets outside the boundary that processes untrusted input.",
+  "verified": [
+   "https://code.claude.com/docs/en/agent-sdk/secure-deployment",
+   "https://code.claude.com/docs/en/iam"
+  ]
+ }
+]

@@ -1,0 +1,20 @@
+# Your own study progress (written by the app)
+progress/
+
+# Third-party sources, downloaded by tools/setup.py and not redistributed here:
+# the official Anthropic exam guides and the community study guide (no license)
+vendor/
+
+# Build outputs (tools/setup.py regenerates them). The first three contain imported third-party questions.
+data/questions.official.js
+data/questions.community.js
+data/questions.dev.official.js
+data/questions.dev.js
+data/questions.authored.js
+data/enrichment.js
+data/cards.js
+data/mocks.js
+
+.DS_Store
+__pycache__/
+*.pyc

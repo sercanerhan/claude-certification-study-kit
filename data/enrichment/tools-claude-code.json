@@ -1,0 +1,201 @@
+{
+ "OFF-04": {
+  "domain": 3,
+  "task": "3.2",
+  "why": {
+   "B": "~/.claude/commands/ is personal. It works for one developer but never reaches teammates through git, so 'every developer when they clone' fails.",
+   "C": "CLAUDE.md holds always-loaded instructions and context. It can't define a /review command.",
+   "D": "Claude Code has no .claude/config.json with a commands array. It is a plausible-sounding invention."
+  },
+  "whenRight": "If the checklist were only one developer's personal habit that teammates should not see, ~/.claude/commands/ (B) would be the right home.",
+  "trap": "'available to every developer when they clone or pull': the command must live in the repository (.claude/commands/), not in home directories."
+ },
+ "OFF-05": {
+  "domain": 3,
+  "task": "3.4",
+  "alsoTasks": [
+   "1.6"
+  ],
+  "why": {
+   "B": "Letting the implementation reveal the boundaries means discovering dependencies after you have already moved code, which is the costly rework plan mode exists to prevent.",
+   "C": "Detailed upfront instructions assume the right service structure is already known. Nobody has explored the dependencies yet.",
+   "D": "Waiting for 'unexpected' complexity ignores that the stem already states it: dozens of files and boundary decisions."
+  },
+  "whenRight": "For a small, clearly scoped change (a single-file bug fix with a stack trace), direct execution would be the better choice. After the plan is approved, direct execution is also how you implement it.",
+  "trap": "'dozens of files' plus 'decisions about service boundaries': stated complexity and architectural choices mean plan mode from the start."
+ },
+ "OFF-06": {
+  "domain": 3,
+  "task": "3.3",
+  "alsoTasks": [
+   "3.1"
+  ],
+  "why": {
+   "B": "One root CLAUDE.md with sections loads everything everywhere and relies on Claude inferring which section applies. That isn't deterministic, and it wastes context.",
+   "C": "Skills load on demand, when invoked or when Claude decides they are relevant. The requirement is automatic application based on the file path.",
+   "D": "Directory-level CLAUDE.md files follow the directory tree. Test files spread next to every component can't share one convention source without copies in many folders."
+  },
+  "whenRight": "If each area's conventions were confined to one directory and no file type spanned directories, subdirectory CLAUDE.md files (D) would work acceptably.",
+  "trap": "'spread throughout the codebase' plus 'regardless of location': glob-scoped .claude/rules/ files with paths frontmatter."
+ },
+ "COM-31": {
+  "domain": 3,
+  "task": "3.5",
+  "alsoTasks": [
+   "4.2"
+  ],
+  "why": {
+   "A": "A JSON schema can validate structure, but it doesn't show how a given input should map to the output (which nesting, which timestamp format). Claude still has to guess the transformation.",
+   "C": "More precise prose is still prose. After two inconsistent iterations, a third description is likely to be interpreted differently again.",
+   "D": "Asking Claude to restate its understanding can diagnose the gap, but it doesn't give Claude an unambiguous target for the next attempt."
+  },
+  "whenRight": "If the output shape were already correct and the remaining problem were downstream validation of many responses, a JSON schema check (A) would be a useful guardrail alongside the examples.",
+  "trap": "'described requirements in prose, but Claude interprets them differently each time': show 2–3 input/output examples instead of more prose."
+ },
+ "COM-32": {
+  "domain": 3,
+  "task": "3.4",
+  "alsoTasks": [
+   "3.5"
+  ],
+  "why": {
+   "A": "Picking webhooks silently makes an architectural choice (one-way, no delivery tracking) that the ambiguous requirement never approved.",
+   "C": "Scaffolding first and deferring the integration decision means writing code whose shape depends on the decision you postponed, which invites rework.",
+   "D": "Choosing bot tokens assumes a need for delivery confirmation that the task doesn't state, and may add infrastructure nobody asked for."
+  },
+  "whenRight": "If the task explicitly said 'use incoming webhooks like the existing one-way channels', direct execution (A) would be appropriate because the approach would already be decided.",
+  "trap": "'fundamentally different integration approaches' plus 'without specifying': multiple valid approaches with infrastructure implications call for plan mode."
+ },
+ "COM-33": {
+  "domain": 3,
+  "task": "3.2",
+  "alsoTasks": [
+   "3.1"
+  ],
+  "why": {
+   "A": "Moving everything into skills removes the always-on coding standards and testing conventions from automatic loading, so they would depend on invocation.",
+   "B": "@import improves organisation, but imported files load together with CLAUDE.md, so PR, deploy and migration guidance would still load in every session.",
+   "C": "Path-scoped rules attach to file types. PR review, deployment and migration procedures are workflows, not conventions for particular files, so globs don't capture when they are needed."
+  },
+  "whenRight": "If the task-specific guidance were really conventions for particular files (for example, how every migrations/*.sql file must be written), path-scoped rules (C) would be the better fit.",
+  "trap": "'always follow' versus 'only when doing those tasks': CLAUDE.md for always-loaded standards, skills for on-demand workflows."
+ },
+ "COM-35": {
+  "domain": 3,
+  "task": "3.2",
+  "alsoTasks": [
+   "5.4"
+  ],
+  "why": {
+   "B": "A cheaper or faster model doesn't reduce how much output lands in the main context. The pollution remains.",
+   "C": "Three smaller skills still dump their combined output into the same session, and the analysis becomes fragmented.",
+   "D": "Compressing results inside the same context throws away analysis detail. The 'keeping full analysis capabilities' requirement points to isolation, not truncation."
+  },
+  "whenRight": "If the problem were only cost or latency, not context pollution, a model override (B) would be a reasonable tweak.",
+  "trap": "'loses the context of the original task' plus 'keeping full analysis capabilities': isolate with context: fork."
+ },
+ "COM-36": {
+  "domain": 3,
+  "task": "3.2",
+  "why": {
+   "B": "Skill frontmatter has no username-conditional feature, and editing the shared project skill would affect everyone.",
+   "C": "Mechanically it works (a personal skill shadows a same-name project skill), but it silently hides the team version for that developer. The guide's pattern is a different name. This was the community repo's key.",
+   "D": "There is no override frontmatter field. Precedence comes from location, not from a flag."
+  },
+  "whenRight": "If the developer deliberately wanted /commit itself to behave differently for them, and accepted that it silently shadows the team version, a same-name personal skill (C) would work.",
+  "trap": "'without affecting teammates': the guide's pattern is a personal variant under a different name.",
+  "note": "Answer key changed from the community repo's C to A, to match official guide v1.0 task 3.2 ('personal variants … with different names to avoid affecting teammates').",
+  "answer": [
+   "A"
+  ],
+  "explanation": "Guide v1.0 (task 3.2) describes exactly this: a personal variant under ~/.claude/skills/ with a **different name** (e.g. /my-commit), so the team's /commit stays untouched and the personal version is explicit. Personal skills aren't version-controlled, so teammates are unaffected."
+ },
+ "COM-37": {
+  "domain": 3,
+  "task": "3.1",
+  "why": {
+   "B": "This would explain why the new developer gets *different* behaviour, but the symptom is that the new developer is *missing* guidance the others have, which points to where the guidance lives.",
+   "C": "Claude Code doesn't learn per-user preferences through repetition. Instructions come from memory files that load at session start.",
+   "D": "CLAUDE.md is read fresh in each session. No cache explains a difference between developers on the same up-to-date repo."
+  },
+  "whenRight": "If the new developer had the guidance but behaved differently because of a contradictory instruction in their own ~/.claude/CLAUDE.md, cleaning up that user-level file (B) would be the fix. /memory would show it.",
+  "trap": "'a fourth developer who just joined' plus 'same repo, up-to-date code': the guidance must be in user-level config, so move it to project level."
+ },
+ "COM-38": {
+  "domain": 3,
+  "task": "3.2",
+  "alsoTasks": [
+   "3.3"
+  ],
+  "why": {
+   "A": "Project CLAUDE.md loads in every session, so the endpoint examples would cost context during debugging and review, which is exactly what the stem wants to avoid.",
+   "B": "Pasting examples by hand into every request is unrepeatable and error-prone. A skill packages the same content once for the whole team.",
+   "C": "Path-scoped rules load whenever Claude works with matching files, so debugging or reviewing code in the API directory would still pull in the examples."
+  },
+  "whenRight": "If the content were conventions that apply to every edit of API files (error-handling style, response wrapper), a path-scoped rule (C) would be correct because the need would follow the file, not the task.",
+  "trap": "'only when creating new endpoints, not when debugging or reviewing ... in the API directory': the trigger is the task, not the path, so use an on-demand skill."
+ },
+ "COM-39": {
+  "domain": 3,
+  "task": "3.2",
+  "why": {
+   "A": "Positional parameters don't prompt for missing input, @ references don't isolate the skill from earlier conversation context, and a description warning enforces nothing.",
+   "C": "Splitting the skill and adding 'ask if missing' instructions relies on prompt compliance and leaves the context-leak problem (2) unsolved.",
+   "D": "All three fixes are prompt instructions. They are probabilistic and don't isolate context or restrict tools."
+  },
+  "whenRight": "If only problem (1) existed, argument-hint alone would be enough. If only (3) existed, a tool restriction (or, in current docs, disallowed-tools or permission deny rules) alone would be enough.",
+  "trap": "'fixes all three problems': map each symptom to its configuration key. argument-hint for missing args, context: fork for context leakage, allowed-tools for tool scope.",
+  "note": "Docs nuance: guide v1.0 treats allowed-tools as a restriction. Current Claude Code docs describe allowed-tools as pre-approval (other tools stay callable) and offer disallowed-tools to remove tools. For the exam, B is still correct."
+ },
+ "COM-42": {
+  "domain": 3,
+  "task": "3.1",
+  "alsoTasks": [
+   "3.3"
+  ],
+  "why": {
+   "A": "No .claude/config.yaml mapping mechanism exists. Conditional loading is done with paths frontmatter inside rule files.",
+   "C": "README.md files are not loaded as instructions. Only CLAUDE.md files, .claude/rules/ files and their imports are memory.",
+   "D": "Subdirectory CLAUDE.md files add to their parents rather than overriding them, and they are scoped to directories, not topics. They don't organise topic modules."
+  },
+  "whenRight": "If certain topics applied only to particular file types, adding paths frontmatter to those rule files would turn the topic modules into conditionally loaded rules (task 3.3).",
+  "trap": "'organize ... into focused topical modules': .claude/rules/ with one Markdown file per topic."
+ },
+ "COM-43": {
+  "domain": 3,
+  "task": "3.2",
+  "why": {
+   "A": "The ! prefix runs shell commands to inject their output into the skill prompt. It doesn't isolate the brainstorming conversation.",
+   "C": "Start and end marker skills don't remove anything from context. The exploration text stays in the conversation history.",
+   "D": "Moving the skill to personal scope changes who can use it, not where its output goes."
+  },
+  "whenRight": "If the goal were only to stop teammates from seeing an experimental skill, moving it to ~/.claude/skills/ (D) would be the right change.",
+  "trap": "'subsequent responses are influenced by the alternatives discussion': exploratory output must be isolated with context: fork."
+ },
+ "COM-44": {
+  "domain": 2,
+  "task": "2.4",
+  "why": {
+   "A": "User scope works per person but gives no shared, version-controlled config. Six developers would maintain six drifting setups.",
+   "B": "A custom wrapper server is over-engineering. .mcp.json already supports ${VAR} expansion, and a community GitHub server already exists.",
+   "D": "Placeholder tokens plus local overrides are fragile. The placeholder can be committed and used by mistake, and overriding project config is extra manual work."
+  },
+  "whenRight": "If only one developer wanted to try an experimental GitHub server, user scope (A, in ~/.claude.json) would be the right place.",
+  "trap": "'consistent tooling across the team' plus 'without committing credentials': project .mcp.json with ${GITHUB_TOKEN}.",
+  "note": "Docs nuance: current Claude Code docs call the default `claude mcp add` scope 'local' (personal, for this project only, stored in ~/.claude.json) and keep 'user' for personal servers across all projects. Env var expansion also supports ${VAR:-default}."
+ },
+ "COM-45": {
+  "domain": 3,
+  "task": "3.4",
+  "alsoTasks": [
+   "5.4"
+  ],
+  "why": {
+   "B": "/compact summarises after the fact and loses detail. Running discovery in the main context still fills it, and phases 2–3 need clear context for consistent design.",
+   "C": "Headless mode with manual summaries adds orchestration work and breaks the collaborative design phase, which needs an interactive session.",
+   "D": "Batches spread over multiple sessions lose the shared design discussion. CLAUDE.md can carry a pattern but not the nuanced decisions made in phase 2."
+  },
+  "whenRight": "If discovery output were moderate and the session merely getting long, running /compact (B) during extended exploration would be an acceptable lighter step.",
+  "trap": "'large output ... quickly filling the context window' in phase 1: isolate verbose discovery in an Explore subagent and keep the main context for design and implementation."
+ }
+}

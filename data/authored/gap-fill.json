@@ -1,0 +1,83 @@
+[
+ {
+  "id": "A-S3-09", "scenario": "S3", "domain": 1, "task": "1.6", "type": "single", "select": 1, "difficulty": 2,
+  "stem": "The research system uses a fixed pipeline: search → analyze → synthesize → report. For narrow factual queries it works well. For open-ended questions such as \"What are the second-order effects of remote work on city budgets?\", the right subtopics only become clear after the first round of findings, and the fixed pipeline produces shallow reports that miss whole areas. How should you change the decomposition strategy for these queries?",
+  "options": [
+   {"key": "A", "text": "Add more fixed stages to the pipeline, such as a second search stage and a second analysis stage, for every query."},
+   {"key": "B", "text": "Let the coordinator decompose adaptively: plan initial subtopics, review findings, then spawn follow-up subagents for gaps it discovers."},
+   {"key": "C", "text": "Ask the user to list every subtopic up front so that the fixed pipeline can process each of them in sequence."},
+   {"key": "D", "text": "Raise the search subagent's result limit so that the first pass returns enough material to cover any subtopic."}
+  ],
+  "answer": ["B"],
+  "explanation": "Fixed pipelines (prompt chaining) suit predictable tasks whose steps are known in advance. When the shape of the work only emerges from intermediate results, the guide prefers dynamic, adaptive decomposition: the coordinator plans, inspects what came back, and re-delegates to fill gaps.",
+  "why": {
+   "A": "More fixed stages still cannot react to what was found; they add cost to narrow queries that worked fine.",
+   "C": "It pushes the decomposition onto the user, who doesn't know the second-order subtopics either; that is the system's job.",
+   "D": "More raw results do not create the missing subtopics; the problem is what gets searched, not how much."
+  },
+  "whenRight": "For narrow, predictable queries, the fixed pipeline (prompt chaining) remains the better choice: cheaper, simpler and easier to debug. A hybrid that routes simple queries to the fixed pipeline is ideal.",
+  "trap": "\"only become clear after the first round of findings\": steps that depend on intermediate results point to dynamic decomposition.",
+  "verified": ["https://www.anthropic.com/engineering/building-effective-agents", "https://www.anthropic.com/engineering/multi-agent-research-system"]
+ },
+ {
+  "id": "A-S4-19", "scenario": "S4", "domain": 1, "task": "1.7", "type": "single", "select": 1, "difficulty": 2,
+  "stem": "An engineer used the productivity agent on Monday to investigate a legacy billing module, in a named session. On Thursday they want to continue, but since then a teammate has merged a large refactor that renamed and moved most of the files the session had read. What is the most reliable way to continue the investigation?",
+  "options": [
+   {"key": "A", "text": "Resume the Monday session with --resume and continue asking questions, since it already contains the full analysis."},
+   {"key": "B", "text": "Resume the Monday session and fork it, so the original stays intact while the fork continues the investigation."},
+   {"key": "C", "text": "Start a new session, seeded with a short summary of Monday's confirmed findings, and re-read the current files as needed."},
+   {"key": "D", "text": "Resume the Monday session and run /compact first so that the outdated tool results take up less of the context."}
+  ],
+  "answer": ["C"],
+  "explanation": "A resumed session carries its old tool results. After a big refactor those file contents and paths are stale, and the model may reason from them as if they were current. A fresh session seeded with a concise summary of the validated findings keeps what was learned without the stale evidence.",
+  "why": {
+   "A": "Resuming brings back Monday's file reads, which no longer match the code, so answers may cite files and lines that do not exist.",
+   "B": "Forking preserves the original but the fork inherits the same stale context; forking is for exploring divergent approaches from a valid baseline.",
+   "D": "Compaction summarizes the stale results but does not make them correct; the summary still describes the old structure."
+  },
+  "whenRight": "If the code had not changed (or only trivially), --resume (A) is the efficient choice. Forking (B) fits when you want to try two different approaches from the same still-valid analysis.",
+  "trap": "\"renamed and moved most of the files the session had read\": stale tool results mean start fresh with a summary rather than resume.",
+  "verified": ["https://platform.claude.com/docs/en/agent-sdk/sessions", "https://code.claude.com/docs/en/cli-reference"]
+ },
+ {
+  "id": "A-S2-09", "scenario": "S2", "domain": 3, "task": "3.3", "type": "single", "select": 1, "difficulty": 2,
+  "stem": "Your monorepo has database migration files in many packages (packages/*/migrations/*.sql), and they must all follow the same safety conventions: no destructive changes without a backfill step, explicit lock timeouts. You do not want these conventions loaded into context when Claude Code works on unrelated frontend code. What is the best way to provide them?",
+  "options": [
+   {"key": "A", "text": "Add a migrations section to the root CLAUDE.md so that the conventions are always available to Claude in every package."},
+   {"key": "B", "text": "Put a CLAUDE.md with the conventions in each package's migrations directory, copying the same text into each one."},
+   {"key": "C", "text": "Create a /migration-check skill that developers invoke manually whenever they are working on a migration file."},
+   {"key": "D", "text": "Create a .claude/rules/ file whose YAML frontmatter sets paths to a glob matching migration files in all packages."}
+  ],
+  "answer": ["D"],
+  "explanation": "Path-specific rules in .claude/rules/ load only when Claude works with files matching the glob in their paths frontmatter. One rule file covers migration files scattered across every package, and it stays out of context for unrelated work.",
+  "why": {
+   "A": "Root CLAUDE.md loads in every session, so the conventions cost context even during frontend work, exactly what you wanted to avoid.",
+   "B": "Directory CLAUDE.md files work but duplicate the same text across many packages, which drifts and is hard to maintain.",
+   "C": "A skill depends on someone remembering to invoke it; conventions that must apply automatically belong in rules."
+  },
+  "whenRight": "If the conventions only applied to a single directory, a directory-level CLAUDE.md (B) would be simple and fine. If the content were an on-demand workflow (for example, generating a migration), a skill (C) would fit.",
+  "trap": "\"in many packages\" + \"not loaded for unrelated code\": conventions spread across directories point to .claude/rules/ with paths globs.",
+  "verified": ["https://code.claude.com/docs/en/memory"]
+ },
+ {
+  "id": "A-S6-19", "scenario": "S6", "domain": 5, "task": "5.5", "type": "multi", "select": 2, "difficulty": 3,
+  "stem": "Your invoice extraction pipeline outputs a confidence score per field. You want to auto-approve high-confidence extractions and send the rest to human reviewers, and you need the routing threshold to be trustworthy. Which TWO practices should you adopt? (Select TWO.)",
+  "options": [
+   {"key": "A", "text": "Calibrate the threshold against a labeled validation set, checking actual accuracy at each confidence level."},
+   {"key": "B", "text": "Use the model's self-reported confidence directly, with 0.9 as the threshold since it reflects 90% certainty."},
+   {"key": "C", "text": "Keep reviewing a stratified random sample of auto-approved extractions to catch drift and new error patterns."},
+   {"key": "D", "text": "Once overall accuracy passes 97%, auto-approve every field regardless of document type or field confidence."},
+   {"key": "E", "text": "Route only documents with negative-sentiment text to reviewers, since complaints indicate disputed invoices."}
+  ],
+  "answer": ["A", "C"],
+  "explanation": "Model confidence scores are only useful once calibrated against labeled data, so you know what a score actually means in accuracy terms. After automation starts, stratified sampling of the auto-approved stream catches drift and error types that aggregate metrics hide.",
+  "why": {
+   "B": "Self-reported confidence is poorly calibrated; a 0.9 does not mean 90% accuracy until you measure it.",
+   "D": "A high overall figure can hide poor accuracy on specific document types or fields (e.g. handwritten invoices, tax amounts).",
+   "E": "Sentiment does not measure extraction difficulty or correctness; it solves a different problem."
+  },
+  "whenRight": "Never fully: B and D become acceptable only after calibration and per-segment measurement show the score and the aggregate are reliable for every document type and field.",
+  "trap": "\"need the routing threshold to be trustworthy\": calibrate on labeled data, then keep sampling.",
+  "verified": ["https://platform.claude.com/docs/en/test-and-evaluate/develop-tests"]
+ }
+]
